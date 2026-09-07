@@ -44,19 +44,28 @@ English | [Español](docs/README.es.md) | [中文版](docs/README.zh-CN.md) | [P
 
 ## Video walkthrough
 
-**From Template to Live App in 4 Minutes (ServerKit + AgentSite)**
+Choose a template or bring your own code. Watch both deployment paths on YouTube.
 
-Watch an AgentSite deployment from the template catalog: choose a server, check
-capacity, follow the build in the Deploy Console, and open the live app.
-
-[![Watch on YouTube: deploy AgentSite from a ServerKit template to a live app](docs/videos/template-to-live-app.png)](https://youtu.be/TXfXFz6bVjs)
-
-**[▶ Watch the walkthrough on YouTube · 4:16](https://youtu.be/TXfXFz6bVjs)**
-
-Jump to: [Template catalog](https://www.youtube.com/watch?v=TXfXFz6bVjs&t=27s) ·
-[Deploy drawer](https://www.youtube.com/watch?v=TXfXFz6bVjs&t=71s) ·
-[Capacity check](https://www.youtube.com/watch?v=TXfXFz6bVjs&t=123s) ·
-[Live build](https://www.youtube.com/watch?v=TXfXFz6bVjs&t=151s)
+<table>
+  <tr>
+    <th width="50%">Template to live app</th>
+    <th width="50%">Any Git repo in 3 steps</th>
+  </tr>
+  <tr>
+    <td valign="top">
+      <a href="https://youtu.be/TXfXFz6bVjs"><img src="docs/videos/template-to-live-app.png" width="100%" alt="Template to live app" /></a>
+      <p>Deploy AgentSite from the template catalog, check capacity and follow the live build.</p>
+      <p><strong><a href="https://youtu.be/TXfXFz6bVjs">▶ Watch on YouTube · 4:16</a></strong></p>
+      <p><a href="https://www.youtube.com/watch?v=TXfXFz6bVjs&amp;t=27s">Template catalog</a> · <a href="https://www.youtube.com/watch?v=TXfXFz6bVjs&amp;t=71s">Deploy drawer</a> · <a href="https://www.youtube.com/watch?v=TXfXFz6bVjs&amp;t=123s">Capacity check</a> · <a href="https://www.youtube.com/watch?v=TXfXFz6bVjs&amp;t=151s">Live build</a></p>
+    </td>
+    <td valign="top">
+      <a href="https://youtu.be/Fv28qMERYDU"><img src="docs/videos/deploy-git-repo.png" width="100%" alt="Any Git repo in 3 steps" /></a>
+      <p>Connect a Git repository, review the detected settings and deploy with the New Service wizard.</p>
+      <p><strong><a href="https://youtu.be/Fv28qMERYDU">▶ Watch on YouTube · 3:45</a></strong></p>
+      <p><a href="https://www.youtube.com/watch?v=Fv28qMERYDU&amp;t=25s">Sources</a> · <a href="https://www.youtube.com/watch?v=Fv28qMERYDU&amp;t=70s">Connect repository</a> · <a href="https://www.youtube.com/watch?v=Fv28qMERYDU&amp;t=117s">Review settings</a> · <a href="https://www.youtube.com/watch?v=Fv28qMERYDU&amp;t=160s">Auto-deploy</a></p>
+    </td>
+  </tr>
+</table>
 
 ---
 

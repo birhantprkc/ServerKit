@@ -44,19 +44,28 @@ ou o custo de plataformas gerenciadas.
 
 ## Guia em vídeo
 
-**Do template ao app no ar em 4 minutos (ServerKit + AgentSite)**
+Escolha um template ou use seu próprio código. Veja as duas formas de implantar no YouTube.
 
-Veja como implantar o AgentSite pelo catálogo de templates: escolha um servidor,
-confira a capacidade, acompanhe a compilação no console de implantação e abra o app.
-
-[![Assistir no YouTube: implante o AgentSite a partir de um template do ServerKit](videos/template-to-live-app.png)](https://youtu.be/TXfXFz6bVjs)
-
-**[▶ Assistir ao guia no YouTube · 4:16](https://youtu.be/TXfXFz6bVjs)**
-
-Ir para: [Catálogo de templates](https://www.youtube.com/watch?v=TXfXFz6bVjs&t=27s) ·
-[Painel de implantação](https://www.youtube.com/watch?v=TXfXFz6bVjs&t=71s) ·
-[Verificação de capacidade](https://www.youtube.com/watch?v=TXfXFz6bVjs&t=123s) ·
-[Compilação ao vivo](https://www.youtube.com/watch?v=TXfXFz6bVjs&t=151s)
+<table>
+  <tr>
+    <th width="50%">Do template ao app no ar</th>
+    <th width="50%">Qualquer repositório Git em 3 passos</th>
+  </tr>
+  <tr>
+    <td valign="top">
+      <a href="https://youtu.be/TXfXFz6bVjs"><img src="videos/template-to-live-app.png" width="100%" alt="Do template ao app no ar" /></a>
+      <p>Implante o AgentSite pelo catálogo de templates, confira a capacidade e acompanhe a compilação ao vivo.</p>
+      <p><strong><a href="https://youtu.be/TXfXFz6bVjs">▶ Assistir no YouTube · 4:16</a></strong></p>
+      <p><a href="https://www.youtube.com/watch?v=TXfXFz6bVjs&amp;t=27s">Catálogo</a> · <a href="https://www.youtube.com/watch?v=TXfXFz6bVjs&amp;t=71s">Painel de implantação</a> · <a href="https://www.youtube.com/watch?v=TXfXFz6bVjs&amp;t=123s">Capacidade</a> · <a href="https://www.youtube.com/watch?v=TXfXFz6bVjs&amp;t=151s">Compilação ao vivo</a></p>
+    </td>
+    <td valign="top">
+      <a href="https://youtu.be/Fv28qMERYDU"><img src="videos/deploy-git-repo.png" width="100%" alt="Qualquer repositório Git em 3 passos" /></a>
+      <p>Conecte um repositório Git, revise as configurações detectadas e implante com o assistente de novo serviço.</p>
+      <p><strong><a href="https://youtu.be/Fv28qMERYDU">▶ Assistir no YouTube · 3:45</a></strong></p>
+      <p><a href="https://www.youtube.com/watch?v=Fv28qMERYDU&amp;t=25s">Fontes</a> · <a href="https://www.youtube.com/watch?v=Fv28qMERYDU&amp;t=70s">Conectar repositório</a> · <a href="https://www.youtube.com/watch?v=Fv28qMERYDU&amp;t=117s">Revisar configurações</a> · <a href="https://www.youtube.com/watch?v=Fv28qMERYDU&amp;t=160s">Implantação automática</a></p>
+    </td>
+  </tr>
+</table>
 
 ---
 

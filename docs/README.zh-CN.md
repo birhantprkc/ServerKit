@@ -44,19 +44,28 @@ Docker 容器和安全策略——无需 Kubernetes 的复杂性，
 
 ## 视频教程
 
-**4 分钟从模板到应用上线（ServerKit + AgentSite）**
+选择模板或使用自己的代码，在 YouTube 上观看两种部署方式。
 
-观看如何从模板目录部署 AgentSite：选择服务器、检查可用资源、
-在部署控制台中实时查看构建过程，最后打开已上线的应用。
-
-[![在 YouTube 上观看：使用 ServerKit 模板部署 AgentSite 并上线应用](videos/template-to-live-app.png)](https://youtu.be/TXfXFz6bVjs)
-
-**[▶ 在 YouTube 上观看教程 · 4:16](https://youtu.be/TXfXFz6bVjs)**
-
-跳转至: [模板目录](https://www.youtube.com/watch?v=TXfXFz6bVjs&t=27s) ·
-[部署面板](https://www.youtube.com/watch?v=TXfXFz6bVjs&t=71s) ·
-[资源检查](https://www.youtube.com/watch?v=TXfXFz6bVjs&t=123s) ·
-[实时构建](https://www.youtube.com/watch?v=TXfXFz6bVjs&t=151s)
+<table>
+  <tr>
+    <th width="50%">从模板到应用上线</th>
+    <th width="50%">3 步部署 Git 仓库</th>
+  </tr>
+  <tr>
+    <td valign="top">
+      <a href="https://youtu.be/TXfXFz6bVjs"><img src="videos/template-to-live-app.png" width="100%" alt="从模板到应用上线" /></a>
+      <p>从模板目录部署 AgentSite，检查可用资源并实时查看构建过程。</p>
+      <p><strong><a href="https://youtu.be/TXfXFz6bVjs">▶ 在 YouTube 上观看 · 4:16</a></strong></p>
+      <p><a href="https://www.youtube.com/watch?v=TXfXFz6bVjs&amp;t=27s">模板目录</a> · <a href="https://www.youtube.com/watch?v=TXfXFz6bVjs&amp;t=71s">部署面板</a> · <a href="https://www.youtube.com/watch?v=TXfXFz6bVjs&amp;t=123s">资源检查</a> · <a href="https://www.youtube.com/watch?v=TXfXFz6bVjs&amp;t=151s">实时构建</a></p>
+    </td>
+    <td valign="top">
+      <a href="https://youtu.be/Fv28qMERYDU"><img src="videos/deploy-git-repo.png" width="100%" alt="3 步部署 Git 仓库" /></a>
+      <p>连接 Git 仓库，检查自动识别的配置，然后使用新建服务向导完成部署。</p>
+      <p><strong><a href="https://youtu.be/Fv28qMERYDU">▶ 在 YouTube 上观看 · 3:45</a></strong></p>
+      <p><a href="https://www.youtube.com/watch?v=Fv28qMERYDU&amp;t=25s">代码来源</a> · <a href="https://www.youtube.com/watch?v=Fv28qMERYDU&amp;t=70s">连接仓库</a> · <a href="https://www.youtube.com/watch?v=Fv28qMERYDU&amp;t=117s">检查配置</a> · <a href="https://www.youtube.com/watch?v=Fv28qMERYDU&amp;t=160s">自动部署</a></p>
+    </td>
+  </tr>
+</table>
 
 ---
 

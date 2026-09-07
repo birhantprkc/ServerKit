@@ -44,19 +44,28 @@ ni el coste de las plataformas gestionadas.
 
 ## Guía en video
 
-**De una plantilla a una app en funcionamiento en 4 minutos (ServerKit + AgentSite)**
+Elige una plantilla o usa tu propio código. Mira ambas formas de desplegar en YouTube.
 
-Mira cómo desplegar AgentSite desde el catálogo de plantillas: elige un servidor,
-comprueba su capacidad, sigue la compilación en la consola de despliegue y abre la app.
-
-[![Ver en YouTube: despliega AgentSite desde una plantilla de ServerKit](videos/template-to-live-app.png)](https://youtu.be/TXfXFz6bVjs)
-
-**[▶ Ver la guía en YouTube · 4:16](https://youtu.be/TXfXFz6bVjs)**
-
-Ir a: [Catálogo de plantillas](https://www.youtube.com/watch?v=TXfXFz6bVjs&t=27s) ·
-[Panel de despliegue](https://www.youtube.com/watch?v=TXfXFz6bVjs&t=71s) ·
-[Comprobación de capacidad](https://www.youtube.com/watch?v=TXfXFz6bVjs&t=123s) ·
-[Compilación en directo](https://www.youtube.com/watch?v=TXfXFz6bVjs&t=151s)
+<table>
+  <tr>
+    <th width="50%">De una plantilla a una app en funcionamiento</th>
+    <th width="50%">Cualquier repositorio Git en 3 pasos</th>
+  </tr>
+  <tr>
+    <td valign="top">
+      <a href="https://youtu.be/TXfXFz6bVjs"><img src="videos/template-to-live-app.png" width="100%" alt="De una plantilla a una app en funcionamiento" /></a>
+      <p>Despliega AgentSite desde el catálogo de plantillas, comprueba la capacidad y sigue la compilación en directo.</p>
+      <p><strong><a href="https://youtu.be/TXfXFz6bVjs">▶ Ver en YouTube · 4:16</a></strong></p>
+      <p><a href="https://www.youtube.com/watch?v=TXfXFz6bVjs&amp;t=27s">Catálogo</a> · <a href="https://www.youtube.com/watch?v=TXfXFz6bVjs&amp;t=71s">Panel de despliegue</a> · <a href="https://www.youtube.com/watch?v=TXfXFz6bVjs&amp;t=123s">Capacidad</a> · <a href="https://www.youtube.com/watch?v=TXfXFz6bVjs&amp;t=151s">Compilación en directo</a></p>
+    </td>
+    <td valign="top">
+      <a href="https://youtu.be/Fv28qMERYDU"><img src="videos/deploy-git-repo.png" width="100%" alt="Cualquier repositorio Git en 3 pasos" /></a>
+      <p>Conecta un repositorio Git, revisa la configuración detectada y despliega con el asistente de nuevo servicio.</p>
+      <p><strong><a href="https://youtu.be/Fv28qMERYDU">▶ Ver en YouTube · 3:45</a></strong></p>
+      <p><a href="https://www.youtube.com/watch?v=Fv28qMERYDU&amp;t=25s">Fuentes</a> · <a href="https://www.youtube.com/watch?v=Fv28qMERYDU&amp;t=70s">Conectar repositorio</a> · <a href="https://www.youtube.com/watch?v=Fv28qMERYDU&amp;t=117s">Revisar configuración</a> · <a href="https://www.youtube.com/watch?v=Fv28qMERYDU&amp;t=160s">Despliegue automático</a></p>
+    </td>
+  </tr>
+</table>
 
 ---
 
