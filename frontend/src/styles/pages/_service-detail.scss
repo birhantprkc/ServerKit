@@ -546,16 +546,31 @@ h3.svc-eyebrow {
         position: sticky;
         top: $space-4;
 
+        // Phones: one horizontally scrollable chip row. Groups are flattened
+        // (display: contents) so every item is a direct flex child; the group
+        // labels are hidden and the +$space-4 stagger margin disappears with
+        // the group boxes. The old wrap layout squeezed four group columns
+        // side by side, staggered them 16px apart and clipped the pills.
         @media (max-width: $breakpoint-md) {
             position: static;
             flex-direction: row;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
+            gap: 6px;
+            overflow-x: auto;
+            padding-bottom: 2px; // keep the active pill's ring/shadow unclipped
+            scrollbar-width: none;
+            &::-webkit-scrollbar { display: none; }
         }
     }
 
     // Grouped left nav — an uppercase mono label per group.
     &__group + &__group {
         margin-top: $space-4;
+    }
+
+    @media (max-width: $breakpoint-md) {
+        &__group { display: contents; }
+        &__grouplabel { display: none; }
     }
 
     &__grouplabel {
@@ -592,6 +607,13 @@ h3.svc-eyebrow {
         &.is-active {
             @include status-variant(var(--accent-bright), var(--accent-bg));
             svg { color: var(--accent-bright); }
+        }
+
+        // Chip row on phones: shrink to the label, never wrap or stretch.
+        @media (max-width: $breakpoint-md) {
+            width: auto;
+            flex: 0 0 auto;
+            white-space: nowrap;
         }
     }
 
