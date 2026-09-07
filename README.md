@@ -36,7 +36,7 @@ English | [Español](docs/README.es.md) | [中文版](docs/README.zh-CN.md) | [P
 
 <br>
 
-[Quick Start](#-quick-start) · [Screenshots](#-screenshots) · [Features](#-features) · [Architecture](#-architecture) · [Roadmap](#-roadmap) · [Docs](#-documentation) · [Contributing](#-contributing) · [Discord](#-community)
+[Quick Start](#-quick-start) · [Screenshots](#-screenshots) · [Features](#-features) · [Architecture](#-architecture) · [Roadmap](#-roadmap) · [Changelog](CHANGELOG.md) · [Docs](#-documentation) · [Contributing](#-contributing) · [Discord](#-community)
 
 </div>
 
