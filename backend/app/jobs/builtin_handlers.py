@@ -433,6 +433,102 @@ def run_extension_update_check():
     return {'updates': len(updates), 'notified': True}
 
 
+# How often fleet alert thresholds are evaluated (seconds). The evaluation
+# itself averages a server's samples over each threshold's own
+# ``duration_seconds`` window, so this is only how late a sustained breach can
+# be noticed, not what counts as sustained.
+FLEET_THRESHOLD_INTERVAL = 60
+
+
+def run_fleet_threshold_checks():
+    """Evaluate every enabled fleet alert threshold, and say what changed.
+
+    ``FleetMonitorService.check_fleet_thresholds`` existed, was correct, and
+    had no caller anywhere in the backend: thresholds could be configured on
+    the Fleet page and were never evaluated, so a server could sit at 99% CPU
+    for a week without opening an alert. This is the missing half — the
+    schedule, and the notification that turns an ``MetricAlert`` row into
+    something a person hears about.
+
+    Both directions are notified. A breach that nobody is told about is the
+    bug; a recovery that nobody is told about leaves somebody chasing a problem
+    that has gone. A row closed because the severity changed is neither, and is
+    not announced twice: the new alert already says what happened.
+    """
+    from app.services.fleet_monitor_service import FleetMonitorService
+
+    result = FleetMonitorService.check_fleet_thresholds()
+    if not result or (not result.get('opened') and not result.get('resolved')):
+        return None
+
+    opened = result.get('opened') or []
+    resolved = result.get('resolved') or []
+    _notify_fleet_alerts(opened, resolved)
+    return {'opened': len(opened), 'resolved': len(resolved),
+            'superseded': len(result.get('superseded') or []),
+            'servers': result.get('servers', 0),
+            'evaluated': result.get('evaluated', 0)}
+
+
+def _notify_fleet_alerts(opened, resolved):
+    """Send one notification per alert, through the Notification Bus.
+
+    Per alert rather than per sweep: an operator needs to know *which* server
+    and *which* metric, and the bus already de-duplicates and routes by
+    preference. A failure to notify is logged and never allowed to lose the
+    alert rows, which are committed by the time we get here.
+    """
+    try:
+        from app.notifications.sdk import NotifySdk
+    except Exception as e:                       # notifications unavailable
+        logger.warning('Fleet thresholds fired but the notification bus is '
+                       'unavailable: %s', e)
+        return
+
+    sdk = NotifySdk()
+    for alert in opened:
+        server = getattr(alert, 'server', None)
+        hostname = getattr(server, 'name', None) or alert.server_id
+        try:
+            sdk.send(
+                'system.alert',
+                to='admins',
+                severity='critical' if alert.severity == 'critical' else 'warning',
+                data={
+                    'hostname': hostname,
+                    'alert_type': f'{alert.metric} {alert.severity}',
+                    'metric': alert.metric,
+                    'value': alert.value,
+                    'threshold': alert.threshold,
+                    'message': (
+                        f'{hostname}: {alert.metric} averaged {alert.value} over '
+                        f'{alert.duration_seconds}s, past the '
+                        f'{alert.severity} threshold of {alert.threshold}.'),
+                },
+            )
+        except Exception as e:
+            logger.error('Could not notify fleet alert %s: %s', alert.id, e)
+
+    for alert in resolved:
+        server = getattr(alert, 'server', None)
+        hostname = getattr(server, 'name', None) or alert.server_id
+        try:
+            sdk.send(
+                'system.alert',
+                to='admins',
+                severity='info',
+                data={
+                    'hostname': hostname,
+                    'alert_type': f'{alert.metric} recovered',
+                    'metric': alert.metric,
+                    'message': (f'{hostname}: {alert.metric} is back under its '
+                                f'threshold.'),
+                },
+            )
+        except Exception as e:
+            logger.error('Could not notify fleet recovery %s: %s', alert.id, e)
+
+
 # ---------------------------------------------------------------------------
 # Handler registration + schedule seeding
 # ---------------------------------------------------------------------------
@@ -458,6 +554,9 @@ _BUILTINS = [
     ('builtin.security_feed',       run_security_feed_check,   'security-feed',     86400, 600),
     ('builtin.job_retention',       run_job_retention,         'job-retention',      21600, 1500),
     ('builtin.telemetry_retention', run_telemetry_retention,   'telemetry-retention', 21600, 1800),
+    # Fleet alert thresholds. Configurable since the Fleet page shipped, and
+    # never evaluated until this row existed.
+    ('builtin.fleet_thresholds',    run_fleet_threshold_checks, 'fleet-thresholds', FLEET_THRESHOLD_INTERVAL, 45),
 ]
 
 

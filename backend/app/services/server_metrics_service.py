@@ -21,10 +21,20 @@ logger = logging.getLogger(__name__)
 class ServerMetricsService:
     """Service for managing remote server metrics with retention and aggregation."""
 
-    # Retention periods (in days)
+    # Retention. There is one store — the raw ``server_metrics`` rows — and
+    # ``cleanup_old_metrics`` deletes every one of them past this many days.
+    #
+    # There used to be HOURLY_RETENTION_DAYS = 30 and DAILY_RETENTION_DAYS =
+    # 365 beside it. Nothing read them and nothing wrote an aggregate: they
+    # described a retention policy that did not exist, next to a PERIOD_CONFIG
+    # that offers 7d and 30d windows. A 30-day chart was drawn from at most
+    # seven days of rows and said nothing about the difference.
+    #
+    # Rolled-up aggregates would be the other way to fix that, and would need
+    # their own tables and their own writer. Until they exist, the honest thing
+    # is to answer with the window we can actually serve and to say so, which
+    # is what `retention_days`/`covers_from`/`truncated` below are for.
     RAW_RETENTION_DAYS = 7       # Keep raw metrics for 7 days
-    HOURLY_RETENTION_DAYS = 30   # Keep hourly aggregates for 30 days
-    DAILY_RETENTION_DAYS = 365   # Keep daily aggregates for 1 year
 
     # Period configurations: period -> (interval_minutes, hours_back)
     PERIOD_CONFIG = {
@@ -74,6 +84,51 @@ class ServerMetricsService:
             db.session.rollback()
             return None
 
+    @staticmethod
+    def _period_bucket(aggregation: str):
+        """Truncate a timestamp to the hour or the day, on either database.
+
+        ``date_trunc`` is PostgreSQL's. This service was calling it
+        unconditionally, so ``get_aggregated_metrics`` raised
+        ``no such function: date_trunc`` on every SQLite deployment — and
+        SQLite is a supported database, not a test-only one. SQLite gets
+        ``strftime`` with the same bucket boundaries.
+        """
+        from app import db
+        unit = 'day' if aggregation == 'daily' else 'hour'
+        if db.engine.dialect.name == 'sqlite':
+            fmt = '%Y-%m-%d 00:00:00' if unit == 'day' else '%Y-%m-%d %H:00:00'
+            return func.strftime(fmt, ServerMetrics.timestamp)
+        return func.date_trunc(unit, ServerMetrics.timestamp)
+
+    @staticmethod
+    def _bucket_iso(period) -> Optional[str]:
+        """The bucket as ISO text, whichever type the database returned."""
+        if period is None:
+            return None
+        if hasattr(period, 'isoformat'):
+            return period.isoformat()
+        # SQLite's strftime already produces 'YYYY-MM-DD HH:MM:SS'.
+        return str(period).replace(' ', 'T')
+
+    @classmethod
+    def coverage(cls, hours_back: int) -> Dict[str, Any]:
+        """What of a requested window this store can actually answer.
+
+        Raw rows are deleted after ``RAW_RETENTION_DAYS``, so a longer request
+        is served truncated. Saying so is the difference between a chart that
+        is short and a chart that is wrong.
+        """
+        retained_hours = cls.RAW_RETENTION_DAYS * 24
+        now = datetime.utcnow()
+        served_hours = min(hours_back, retained_hours)
+        return {
+            'retention_days': cls.RAW_RETENTION_DAYS,
+            'covers_from': (now - timedelta(hours=served_hours)).isoformat(),
+            'requested_hours': hours_back,
+            'truncated': hours_back > retained_hours,
+        }
+
     @classmethod
     def get_server_history(cls, server_id: str, period: str = '1h') -> Dict[str, Any]:
         """Get historical metrics for a specific server.
@@ -83,7 +138,8 @@ class ServerMetricsService:
             period: One of '1h', '6h', '24h', '7d', '30d'
 
         Returns:
-            Dict with period info, data points, and summary statistics
+            Dict with period info, data points, summary statistics, and the
+            coverage this store can actually serve for the window asked for.
         """
         if period not in cls.PERIOD_CONFIG:
             period = '1h'
@@ -113,7 +169,8 @@ class ServerMetricsService:
             'interval_minutes': interval_minutes,
             'points': len(data),
             'data': data,
-            'summary': summary
+            'summary': summary,
+            'coverage': cls.coverage(hours_back),
         }
 
     @classmethod
@@ -137,12 +194,7 @@ class ServerMetricsService:
 
         cutoff = datetime.utcnow() - timedelta(hours=hours_back)
 
-        if aggregation == 'daily':
-            # Group by day
-            trunc_expr = func.date_trunc('day', ServerMetrics.timestamp)
-        else:
-            # Group by hour
-            trunc_expr = func.date_trunc('hour', ServerMetrics.timestamp)
+        trunc_expr = cls._period_bucket(aggregation)
 
         # Query with aggregation
         query = db.session.query(
@@ -169,7 +221,7 @@ class ServerMetricsService:
         for row in results:
             # `is not None`, not truthiness: a real 0.0 reading must survive.
             data.append({
-                'timestamp': row.period.isoformat() if row.period else None,
+                'timestamp': cls._bucket_iso(row.period),
                 'cpu': {
                     'avg': round(row.cpu_avg, 1) if row.cpu_avg is not None else None,
                     'min': round(row.cpu_min, 1) if row.cpu_min is not None else None,
@@ -194,7 +246,8 @@ class ServerMetricsService:
             'period': period,
             'aggregation': aggregation,
             'points': len(data),
-            'data': data
+            'data': data,
+            'coverage': cls.coverage(hours_back),
         }
 
     @classmethod

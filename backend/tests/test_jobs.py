@@ -188,18 +188,21 @@ class TestBuiltins:
         # is ~11 MB/day of database forever, which is what filled a 25 GB host
         # from routine updates alone (each update copies the DB twice).
         assert 'builtin.telemetry_retention' in kinds
-        assert len([k for k in kinds if k.startswith('builtin.')]) == 16
+        # Fleet alert thresholds. The evaluation existed and had no caller, so
+        # thresholds set on the Fleet page were never checked against anything.
+        assert 'builtin.fleet_thresholds' in kinds
+        assert len([k for k in kinds if k.startswith('builtin.')]) == 17
 
         builtin_handlers.seed_builtin_schedules()
-        # 16 builtin.* schedules (incl. restore-point/job/telemetry retention,
-        # the monitor sweep, security-feed check and recycle-bin retention)
-        # + login-link/SSO reapers + drift/FIM/bandwidth sweeps + the host
-        # doctor sweep AND the fleet doctor sweep (plan 26) + the setup-health
-        # nag (plan 22).
-        assert ScheduledJob.query.count() == 24
+        # 17 builtin.* schedules (incl. restore-point/job/telemetry retention,
+        # the monitor sweep, security-feed check, recycle-bin retention and the
+        # fleet threshold check) + login-link/SSO reapers + drift/FIM/bandwidth
+        # sweeps + the host doctor sweep AND the fleet doctor sweep (plan 26)
+        # + the setup-health nag (plan 22).
+        assert ScheduledJob.query.count() == 25
         # Seeding twice doesn't duplicate.
         builtin_handlers.seed_builtin_schedules()
-        assert ScheduledJob.query.count() == 24
+        assert ScheduledJob.query.count() == 25
 
 
 class TestApi:

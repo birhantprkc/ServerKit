@@ -45,6 +45,37 @@ awaiting a stable release:
 
 ### Fixed
 
+- **Fleet alert thresholds are actually evaluated.** `check_fleet_thresholds`
+  was written, was correct, and had no caller anywhere in the backend — so a
+  threshold configured on the Fleet page was never checked against anything and
+  a server could sit at 99% CPU for a week in silence. It now runs every minute
+  as a built-in scheduled job like every other recurring task, and each alert it
+  opens or resolves is sent to admins through the Notification Bus. A breach
+  nobody is told about was most of the way to no monitoring at all.
+
+- **The agent heartbeat stops throwing away metrics.** It built its own
+  `ServerMetrics` row and filled five of the model's thirteen columns, silently
+  dropping `memory_used`, `disk_used`, the network totals, both network *rates*
+  and `extra`. The two rates are exactly what the fleet threshold checker reads,
+  so a network threshold could never fire for an agent-reported server: the data
+  needed to evaluate it was discarded on the way in. Heartbeats now go through
+  `ServerMetricsService`, the same writer everything else uses.
+
+- **Metric history says how far back it can really go.** The history and
+  aggregate endpoints offered 7-day and 30-day windows while cleanup deleted
+  every sample after seven days, and two constants described hourly and daily
+  aggregate retention that nothing produced. A 30-day chart came back holding at
+  most seven days and said nothing about the difference. Both endpoints now
+  return a `coverage` block — the retention in force, the earliest point they
+  can answer for, and whether the window asked for was truncated — and the two
+  constants that promised retention nobody implemented are gone.
+
+- **Aggregated metrics work on SQLite.** `get_aggregated_metrics` grouped by
+  `date_trunc`, which is PostgreSQL's alone, so the endpoint raised
+  `no such function: date_trunc` on every SQLite deployment — one of the two
+  supported databases. Hour and day buckets are now built with the right
+  function for the database in use.
+
 - **Adding a server to the fleet works again on Docker installs.** The panel
   serves the agent installer at `/api/v1/servers/install.sh` by reading it off
   its own filesystem, but the image never copied `scripts/` — so the enrollment
