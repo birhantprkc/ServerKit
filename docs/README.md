@@ -8,6 +8,7 @@ Welcome to the ServerKit documentation. This guide will help you install, config
 
 | Document | Description |
 |----------|-------------|
+| [Video: template to live app](https://youtu.be/TXfXFz6bVjs) | Watch a 4-minute AgentSite deployment through the template catalog and live Deploy Console |
 | [Installation Guide](INSTALLATION.md) | Complete setup instructions for Docker and manual installation |
 | [Architecture](ARCHITECTURE.md) | System design, request flow, and diagrams |
 | [Deployment Guide](DEPLOYMENT.md) | Production deployment, CLI commands, and configuration |

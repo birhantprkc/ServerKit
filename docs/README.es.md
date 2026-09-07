@@ -36,9 +36,27 @@ ni el coste de las plataformas gestionadas.
 
 <br>
 
-[Inicio Rápido](#-inicio-rápido) · [Capturas](#-capturas-de-pantalla) · [Funcionalidades](#-funcionalidades) · [Arquitectura](#-arquitectura) · [Hoja de Ruta](#-hoja-de-ruta) · [Documentación](#-documentación) · [Contribuir](#-contribuir) · [Discord](#-comunidad)
+[Inicio Rápido](#-inicio-rápido) · [Guía en video](#guía-en-video) · [Capturas](#-capturas-de-pantalla) · [Funcionalidades](#-funcionalidades) · [Arquitectura](#-arquitectura) · [Hoja de Ruta](#-hoja-de-ruta) · [Documentación](#-documentación) · [Contribuir](#-contribuir) · [Discord](#-comunidad)
 
 </div>
+
+---
+
+## Guía en video
+
+**De una plantilla a una app en funcionamiento en 4 minutos (ServerKit + AgentSite)**
+
+Mira cómo desplegar AgentSite desde el catálogo de plantillas: elige un servidor,
+comprueba su capacidad, sigue la compilación en la consola de despliegue y abre la app.
+
+[![Ver en YouTube: despliega AgentSite desde una plantilla de ServerKit](videos/template-to-live-app.png)](https://youtu.be/TXfXFz6bVjs)
+
+**[▶ Ver la guía en YouTube · 4:16](https://youtu.be/TXfXFz6bVjs)**
+
+Ir a: [Catálogo de plantillas](https://www.youtube.com/watch?v=TXfXFz6bVjs&t=27s) ·
+[Panel de despliegue](https://www.youtube.com/watch?v=TXfXFz6bVjs&t=71s) ·
+[Comprobación de capacidad](https://www.youtube.com/watch?v=TXfXFz6bVjs&t=123s) ·
+[Compilación en directo](https://www.youtube.com/watch?v=TXfXFz6bVjs&t=151s)
 
 ---
 

@@ -36,9 +36,27 @@ ou o custo de plataformas gerenciadas.
 
 <br>
 
-[Início Rápido](#-início-rápido) · [Capturas de Tela](#-capturas-de-tela) · [Funcionalidades](#-funcionalidades) · [Arquitetura](#-arquitetura) · [Roadmap](#-roadmap) · [Documentação](#-documentação) · [Contribuindo](#-contribuindo) · [Discord](#-comunidade)
+[Início Rápido](#-início-rápido) · [Guia em vídeo](#guia-em-vídeo) · [Capturas de Tela](#-capturas-de-tela) · [Funcionalidades](#-funcionalidades) · [Arquitetura](#-arquitetura) · [Roadmap](#-roadmap) · [Documentação](#-documentação) · [Contribuindo](#-contribuindo) · [Discord](#-comunidade)
 
 </div>
+
+---
+
+## Guia em vídeo
+
+**Do template ao app no ar em 4 minutos (ServerKit + AgentSite)**
+
+Veja como implantar o AgentSite pelo catálogo de templates: escolha um servidor,
+confira a capacidade, acompanhe a compilação no console de implantação e abra o app.
+
+[![Assistir no YouTube: implante o AgentSite a partir de um template do ServerKit](videos/template-to-live-app.png)](https://youtu.be/TXfXFz6bVjs)
+
+**[▶ Assistir ao guia no YouTube · 4:16](https://youtu.be/TXfXFz6bVjs)**
+
+Ir para: [Catálogo de templates](https://www.youtube.com/watch?v=TXfXFz6bVjs&t=27s) ·
+[Painel de implantação](https://www.youtube.com/watch?v=TXfXFz6bVjs&t=71s) ·
+[Verificação de capacidade](https://www.youtube.com/watch?v=TXfXFz6bVjs&t=123s) ·
+[Compilação ao vivo](https://www.youtube.com/watch?v=TXfXFz6bVjs&t=151s)
 
 ---
 

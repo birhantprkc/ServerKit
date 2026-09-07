@@ -36,9 +36,27 @@ Docker 容器和安全策略——无需 Kubernetes 的复杂性，
 
 <br>
 
-[快速开始](#-快速开始) · [截图预览](#-截图预览) · [功能特性](#-功能特性) · [系统架构](#-系统架构) · [路线图](#-路线图) · [文档](#-文档) · [参与贡献](#-参与贡献) · [Discord](#-社区)
+[快速开始](#-快速开始) · [视频教程](#视频教程) · [截图预览](#-截图预览) · [功能特性](#-功能特性) · [系统架构](#-系统架构) · [路线图](#-路线图) · [文档](#-文档) · [参与贡献](#-参与贡献) · [Discord](#-社区)
 
 </div>
+
+---
+
+## 视频教程
+
+**4 分钟从模板到应用上线（ServerKit + AgentSite）**
+
+观看如何从模板目录部署 AgentSite：选择服务器、检查可用资源、
+在部署控制台中实时查看构建过程，最后打开已上线的应用。
+
+[![在 YouTube 上观看：使用 ServerKit 模板部署 AgentSite 并上线应用](videos/template-to-live-app.png)](https://youtu.be/TXfXFz6bVjs)
+
+**[▶ 在 YouTube 上观看教程 · 4:16](https://youtu.be/TXfXFz6bVjs)**
+
+跳转至: [模板目录](https://www.youtube.com/watch?v=TXfXFz6bVjs&t=27s) ·
+[部署面板](https://www.youtube.com/watch?v=TXfXFz6bVjs&t=71s) ·
+[资源检查](https://www.youtube.com/watch?v=TXfXFz6bVjs&t=123s) ·
+[实时构建](https://www.youtube.com/watch?v=TXfXFz6bVjs&t=151s)
 
 ---
 

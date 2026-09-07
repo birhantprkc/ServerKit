@@ -36,9 +36,27 @@ English | [Español](docs/README.es.md) | [中文版](docs/README.zh-CN.md) | [P
 
 <br>
 
-[Quick Start](#-quick-start) · [Screenshots](#-screenshots) · [Features](#-features) · [Architecture](#-architecture) · [Roadmap](#-roadmap) · [Changelog](CHANGELOG.md) · [Docs](#-documentation) · [Contributing](#-contributing) · [Discord](#-community)
+[Quick Start](#-quick-start) · [Video walkthrough](#video-walkthrough) · [Screenshots](#-screenshots) · [Features](#-features) · [Architecture](#-architecture) · [Roadmap](#-roadmap) · [Changelog](CHANGELOG.md) · [Docs](#-documentation) · [Contributing](#-contributing) · [Discord](#-community)
 
 </div>
+
+---
+
+## Video walkthrough
+
+**From Template to Live App in 4 Minutes (ServerKit + AgentSite)**
+
+Watch an AgentSite deployment from the template catalog: choose a server, check
+capacity, follow the build in the Deploy Console, and open the live app.
+
+[![Watch on YouTube: deploy AgentSite from a ServerKit template to a live app](docs/videos/template-to-live-app.png)](https://youtu.be/TXfXFz6bVjs)
+
+**[▶ Watch the walkthrough on YouTube · 4:16](https://youtu.be/TXfXFz6bVjs)**
+
+Jump to: [Template catalog](https://www.youtube.com/watch?v=TXfXFz6bVjs&t=27s) ·
+[Deploy drawer](https://www.youtube.com/watch?v=TXfXFz6bVjs&t=71s) ·
+[Capacity check](https://www.youtube.com/watch?v=TXfXFz6bVjs&t=123s) ·
+[Live build](https://www.youtube.com/watch?v=TXfXFz6bVjs&t=151s)
 
 ---
 
