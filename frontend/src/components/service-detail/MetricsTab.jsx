@@ -4,6 +4,7 @@ import { Gauge } from '@/components/ds';
 import EmptyState from '../EmptyState';
 import { usePolling } from '@/hooks/usePolling';
 import { useTranslation } from 'react-i18next';
+import { normalizeContainerStats, resolveAppContainerId } from '@/utils/containerMetrics';
 
 // Live metrics cadence.
 const METRICS_REFRESH_MS = 10000;
@@ -25,13 +26,11 @@ const MetricsTabContent = ({ app }) => {
         try {
             if (isDocker) {
                 const data = await api.getContainers(true);
-                const appContainers = (data.containers || []).filter(c =>
-                    c.Names?.some(n => n.includes(app.name)) ||
-                    c.Labels?.['com.docker.compose.project'] === app.name
-                );
-
-                if (appContainers.length > 0) {
-                    const containerStats = await api.getContainerStats(appContainers[0].Id);
+                const runtimeId = resolveAppContainerId(app, data.containers || []);
+                if (runtimeId) {
+                    const containerStats = normalizeContainerStats(
+                        await api.getContainerStats(runtimeId)
+                    );
                     if (currentRequest === requestId.current) setStats(containerStats);
                 } else if (currentRequest === requestId.current) {
                     setStats(null);
@@ -62,12 +61,12 @@ const MetricsTabContent = ({ app }) => {
     }
 
     if (isDocker && stats) {
-        const cpuPercent = parseFloat(stats.cpu_percent || stats.CPUPerc || 0);
-        const memPercent = parseFloat(stats.memory_percent || stats.MemPerc || 0);
-        const memUsage = stats.memory_usage || stats.MemUsage || 'N/A';
-        const netIO = stats.net_io || stats.NetIO || 'N/A';
-        const blockIO = stats.block_io || stats.BlockIO || 'N/A';
-        const pids = stats.pids || stats.PIDs || 'N/A';
+        const cpuPercent = stats.cpuPercent;
+        const memPercent = stats.memoryPercent;
+        const memUsage = stats.memoryUsage;
+        const netIO = stats.networkIO;
+        const blockIO = stats.blockIO;
+        const pids = stats.pids;
 
         return (
             <div className="metrics-tab">
