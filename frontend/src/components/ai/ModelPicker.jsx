@@ -10,6 +10,11 @@ import { Command, CommandInput, CommandList, CommandEmpty, CommandItem } from '.
 export default function ModelPicker({ id, value, models, onChange, disabled }) {
     const { t } = useTranslation();
     const [open, setOpen] = useState(false);
+    const [filter, setFilter] = useState('all');
+    const choices = [...new Map(models.map((model) => {
+        const item = typeof model === 'string' ? { id: model } : model;
+        return [item.id, item];
+    })).values()].filter((model) => filter === 'all' || model[filter] === true);
     return (
         <div className="sk-model-picker">
             <Input id={id} value={value} maxLength={256} disabled={disabled}
@@ -27,12 +32,31 @@ export default function ModelPicker({ id, value, models, onChange, disabled }) {
                     aria-label={t('ai.connections.chooseModel', 'Choose a model')}>
                     <Command>
                         <CommandInput placeholder={t('ai.connections.searchModels', 'Search models…')} />
+                        <div className="sk-model-picker__filters">
+                            <label htmlFor={`${id}-filter`}>{t('ai.models.capability', 'Capability')}</label>
+                            <select id={`${id}-filter`} value={filter} onChange={(event) => setFilter(event.target.value)}>
+                                <option value="all">{t('ai.models.all', 'All models')}</option>
+                                <option value="tools">{t('ai.models.tools', 'Tool calling')}</option>
+                                <option value="vision">{t('ai.models.vision', 'Vision')}</option>
+                                <option value="reasoning">{t('ai.models.reasoning', 'Reasoning')}</option>
+                                <option value="structured">{t('ai.models.structured', 'Structured output')}</option>
+                            </select>
+                        </div>
                         <CommandList>
                             <CommandEmpty>{t('ai.connections.noModels', 'No matching models. Enter a model ID manually.')}</CommandEmpty>
-                            {[...new Set(models)].map((model) => (
-                                <CommandItem key={model} value={model} onSelect={() => { onChange(model); setOpen(false); }}>
-                                    <span className="sk-model-picker__name">{model}</span>
-                                    {value === model && <Check size={16} />}
+                            {choices.map((model) => (
+                                <CommandItem key={model.id} value={model.id} onSelect={() => { onChange(model.id); setOpen(false); }}>
+                                    <span className="sk-model-picker__name">{model.id}
+                                        <small>{model.context_window ? t('ai.models.context', '{{count}} token context', { count: model.context_window }) : t('ai.models.unknownContext', 'Context unknown')}
+                                            {' · '}{model.pricing ? t('ai.models.prices', '{{input}} USD input / {{output}} USD output per 1M tokens', { input: model.pricing.input, output: model.pricing.output }) : t('ai.models.unknownPrice', 'Pricing unknown')}
+                                        </small>
+                                        <small>{[
+                                            model.tools && t('ai.models.tools', 'Tool calling'), model.vision && t('ai.models.vision', 'Vision'),
+                                            model.structured && t('ai.models.structured', 'Structured output'), model.reasoning && t('ai.models.reasoning', 'Reasoning'),
+                                            model.max_output_tokens && t('ai.models.outputLimit', '{{count}} maximum output tokens', { count: model.max_output_tokens }),
+                                        ].filter(Boolean).join(' · ')}</small>
+                                    </span>
+                                    {value === model.id && <Check size={16} />}
                                 </CommandItem>
                             ))}
                         </CommandList>

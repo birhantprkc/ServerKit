@@ -8,6 +8,9 @@ import { Input } from '../ui/input';
 import EmptyState from '../EmptyState';
 import { Button } from '@/components/ui/button';
 import AIConnectionsSettings from './AIConnectionsSettings';
+import AIManagementSettings from './AIManagementSettings';
+import AIUsageSettings from './AIUsageSettings';
+import { SegControl } from '../ds/SegControl';
 import { useTranslation } from 'react-i18next';
 
 const AI_CONFIG_CHANGED_EVENT = 'serverkit:ai-config-changed';
@@ -27,6 +30,7 @@ const AISettingsTab = () => {
     const [toggling, setToggling] = useState(false);
     const [loadError, setLoadError] = useState(false);
     const [message, setMessage] = useState(null);
+    const [section, setSection] = useState('connections');
 
     useEffect(() => {
         if (!isAdmin) { setLoading(false); return; }
@@ -109,6 +113,12 @@ const AISettingsTab = () => {
                 <p>{t('ai.settings.intro', 'Connect a provider, choose a model, and set the assistant’s limits.')}</p>
             </div>
             {message && <div className={`alert alert-${message.type === 'error' ? 'danger' : 'success'}`} role={message.type === 'error' ? 'alert' : 'status'}>{message.text}</div>}
+            <SegControl className="sk-ai-settings-tabs" value={section} onChange={setSection} aria-label={t('ai.management.sections', 'AI settings sections')} options={[
+                { value: 'connections', label: t('ai.management.connectionsSafety', 'Connections and protections') },
+                { value: 'models', label: t('ai.management.modelsBehavior', 'Task models and behavior') },
+                { value: 'usage', label: t('ai.usage.title', 'AI usage') },
+            ]} />
+            <div hidden={section !== 'connections'}>
             <div {...register('ai-enable', 'settings-card')}>
                 <div className="settings-row">
                     <div className="settings-label">
@@ -141,7 +151,7 @@ const AISettingsTab = () => {
                         value={settings.max_cost_usd}
                         onChange={(e) => setSettings((s) => ({ ...s, max_cost_usd: e.target.value }))}
                     />
-                    <p id="ai-max-cost-hint" className="settings-hint">{t('ai.settings.costHint', 'Stops further model calls when reported spending reaches this amount. A call can exceed the remaining amount; models with unknown pricing need a provider-side limit. Set 0 for no limit.')}</p>
+                    <p id="ai-max-cost-hint" className="settings-hint">{t('ai.settings.costHint', 'Used by the budget behavior in Task models and behavior. A call can exceed the remaining amount; models with unknown pricing need a provider-side limit. Set 0 for no limit.')}</p>
                 </div>
 
                 <div {...register('ai-pii-redaction', 'form-group')}>
@@ -169,6 +179,9 @@ const AISettingsTab = () => {
                     </Button>
                 </div>
             </div>
+            </div>
+            <div hidden={section !== 'models'}><AIManagementSettings connections={settings.connections || []} defaultId={settings.default_connection_id} /></div>
+            <div hidden={section !== 'usage'}><AIUsageSettings connections={settings.connections || []} /></div>
         </div>
     );
 };

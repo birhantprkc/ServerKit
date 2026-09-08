@@ -23,6 +23,8 @@ const initialState = {
     includeContext: true,
     providerConfigured: false,
     enabled: false,
+    profile: '',
+    workflow: 'chat',
     statusLoaded: false,
     conversations: [],
     connections: [],
@@ -73,11 +75,16 @@ function reducer(state, action) {
         case 'SET_STATUS':
             return { ...state, enabled: action.enabled, providerConfigured: action.configured, statusLoaded: true };
         case 'SET_CONNECTIONS': {
-            const selected = action.connections.find((connection) => connection.id === state.selectedConnection)
-                || action.connections.find((connection) => connection.id === action.defaultId);
+            const selected = action.connections.find((connection) => connection.id === state.selectedConnection);
             return { ...state, connections: action.connections, selectedConnection: selected?.id || '',
-                selectedModel: state.selectedConnection === selected?.id ? state.selectedModel : selected?.model || '' };
+                selectedModel: selected ? state.selectedModel : '' };
         }
+        case 'SELECT_PROFILE':
+            return { ...state, profile: action.profile, selectedConnection: '', selectedModel: '' };
+        case 'SELECT_WORKFLOW':
+            return { ...state, workflow: action.workflow, profile: '', selectedConnection: '', selectedModel: '' };
+        case 'RUN_START':
+            return { ...state, messages: patchLastAssistant(state.messages, (message) => ({ ...message, selection: action.selection })) };
         case 'SELECT_CONNECTION': {
             const connection = state.connections.find((item) => item.id === action.id);
             return { ...state, selectedConnection: action.id, selectedModel: connection?.model || '' };
@@ -190,6 +197,7 @@ function reducer(state, action) {
                     (message) => ({
                         ...message,
                         status: message.status === 'streaming' ? 'done' : message.status,
+                        usage: action.usage || message.usage,
                     }),
                 ),
             };
@@ -251,6 +259,7 @@ export function AIProvider({ children }) {
                 id: `srv_${m.id}`,
                 role: m.role === 'assistant' ? 'assistant' : 'user',
                 content: m.content || '',
+                usage: m.usage,
                 attachments: (m.attachments || []).map(normalizeAttachment).filter(Boolean),
                 toolCalls: (m.tool_calls || []).map((tc) => ({
                     id: tc.id, name: tc.name, input: tc.input, output: tc.output,
@@ -300,7 +309,8 @@ export function AIProvider({ children }) {
             case 'pending_action': dispatch({ type: 'SET_PENDING_CONFIRM', payload: data }); break;
             case 'attachment_warning': dispatch({ type: 'ATTACHMENT_WARNING', warning: data }); break;
             case 'error': dispatch({ type: 'SET_ERROR', message: data.message || 'The assistant hit an error.' }); break;
-            case 'done': dispatch({ type: 'TURN_DONE', conversationId: data.conversation_id }); break;
+            case 'run_start': dispatch({ type: 'RUN_START', selection: data }); break;
+            case 'done': dispatch({ type: 'TURN_DONE', conversationId: data.conversation_id, usage: data.usage }); break;
             default: break;
         }
     }, []);
@@ -320,6 +330,8 @@ export function AIProvider({ children }) {
             mode,
             connection_id: activeIdRef.current ? undefined : state.selectedConnection || undefined,
             model: activeIdRef.current ? undefined : state.selectedModel || undefined,
+            profile: activeIdRef.current ? undefined : opts.profile || state.profile || undefined,
+            workflow: activeIdRef.current ? undefined : opts.workflow || state.workflow,
         };
         if (requestedAttachments.length) {
             payload.attachments = requestedAttachments.map(toAttachmentPayload).filter(Boolean);
@@ -356,6 +368,7 @@ export function AIProvider({ children }) {
     }, [
         state.isStreaming, state.providerConfigured, state.mode, state.includeContext, state.attachments,
         state.selectedConnection, state.selectedModel,
+        state.profile, state.workflow,
         buildPageContext, handleEvent, loadConversations,
     ]);
 
@@ -429,6 +442,8 @@ export function AIProvider({ children }) {
         isOpen: state.open,
         selectConnection: (id) => dispatch({ type: 'SELECT_CONNECTION', id }),
         selectModel: (model) => dispatch({ type: 'SELECT_MODEL', model }),
+        selectProfile: (profile) => dispatch({ type: 'SELECT_PROFILE', profile }),
+        selectWorkflow: (workflow) => dispatch({ type: 'SELECT_WORKFLOW', workflow }),
         pageContext,
         // controls
         open, close, toggle, ask, send, stop, confirmAction, setMode, setIncludeContext,

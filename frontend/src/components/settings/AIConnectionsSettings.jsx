@@ -85,7 +85,7 @@ export default function AIConnectionsSettings({ connections, providers, defaultI
                 const result = await api.aiProbeConnection({ ...draft, test: operation === 'test' });
                 if (current !== revision.current) return;
                 if (operation === 'models') {
-                    setModels(result.models || []);
+                    setModels(result.model_details || result.models || []);
                     setMessage({ type: 'success', text: t('ai.connections.modelsFound', '{{count}} models found. You can also enter a model ID manually.', { count: result.models?.length || 0 }) });
                 } else setMessage({ type: 'success', text: result.message || t('ai.connections.verified', 'Connection verified.') });
             }

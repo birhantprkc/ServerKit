@@ -17,6 +17,13 @@ export async function aiGetSettings() {
     return this.request('/ai/settings');
 }
 
+export async function aiGetManagement() { return this.request('/ai/management'); }
+export async function aiSaveManagement(body) { return this.request('/ai/management', { method: 'PUT', body }); }
+export async function aiPreviewRouting(body) { return this.request('/ai/management/preview', { method: 'POST', body }); }
+export async function aiGetUsage(filters = {}) {
+    return this.request(`/ai/usage?${new URLSearchParams(Object.entries(filters).filter(([, value]) => value !== ''))}`);
+}
+
 export async function aiUpdateSettings(body) {
     return this.request('/ai/settings', { method: 'PUT', body });
 }
@@ -82,6 +89,7 @@ export async function aiCancel(conversationId) {
 // Resolves when the stream ends; throws on a non-OK pre-flight response.
 export async function aiStreamChat(payload, { signal, onEvent } = {}) {
     const token = this.getToken();
+    const { activeWorkspaceId } = this.workspace.getSnapshot();
     const res = await fetch(`${this.baseUrl}/ai/chat/stream`, {
         method: 'POST',
         signal,
@@ -89,6 +97,7 @@ export async function aiStreamChat(payload, { signal, onEvent } = {}) {
             'Content-Type': 'application/json',
             Accept: 'text/event-stream',
             ...(token && { Authorization: `Bearer ${token}` }),
+            ...(activeWorkspaceId !== 'all' && { 'X-Workspace-Id': activeWorkspaceId }),
         },
         body: JSON.stringify(payload),
     });
