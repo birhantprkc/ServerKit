@@ -1,12 +1,14 @@
 # AI provider connections
 
 In **Settings → AI Assistant**, add a named connection, choose a provider, fill
-in its configuration, and enter a default model ID. **Discover models** uses the
-current form values; manual model entry remains available when a provider does
-not support discovery. **Save connection** stores credentials encrypted. The
+in its configuration, and choose a default model. **Discover models** uses the
+current form values. **Browse models** opens a searchable picker; manual model
+entry remains available for gateways and providers without discovery. **Save connection** stores credentials encrypted. The
 first connection becomes the default automatically; another connection can be
-made default when saving it. Enable the assistant using the settings below the
-connection editor and save those settings.
+made default when saving it. The **Enable AI assistant** switch saves immediately
+and refreshes the chat UI. Disabling blocks new messages in both chat endpoints
+while retaining conversation history. Limits and protections have their own Save
+action; saving a connection preserves unsaved changes to those settings.
 
 New chats offer a connection selector and an optional model override. Once a
 chat starts, its connection and model stay fixed. Changing the panel default
@@ -60,6 +62,16 @@ location, and access token. Ambient cloud credentials are not a connection optio
 Existing assistant RBAC, redaction, and write-action confirmations remain active.
 Gateway routing aliases may have unknown pricing; enforce authoritative spending
 limits at the gateway. Automatic fallback to another connection is not enabled.
+
+The per-conversation cost ceiling uses Prompture's `hard_stop` policy for new
+and resumed conversations (default $0.50; zero disables it). It checks reported
+cumulative usage before each model call, so a final call can overshoot the
+remaining amount. Budget stops return a clear message, and usage is persisted
+even if the turn stops before producing an answer. This is not an authoritative
+billing limit when provider pricing is unavailable.
+
+See [AI management review](AI_MANAGEMENT_REVIEW.md) for the Prompture and
+AgentSite source review and the proposed task profiles, routing, and reporting.
 
 ## Upgrade behavior
 
