@@ -1906,7 +1906,7 @@ def get_app_logs(app_id):
     # A recorded container is the authoritative runtime for single-container
     # deployments. Repositories may still contain an unrelated compose file,
     # so file presence alone must not redirect their logs through compose.
-    if app.app_type == 'docker' and app.container_id:
+    if app.app_type == 'docker' and app.container_id and not app.server_id:
         if DockerService.get_container(app.container_id):
             result = DockerService.get_container_logs(
                 app.container_id, tail=lines, timestamps=False

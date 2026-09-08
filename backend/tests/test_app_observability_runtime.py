@@ -1,9 +1,10 @@
 """Runtime-aware application logs keep single-container and compose support."""
+import os
 from unittest.mock import patch
 
 import pytest
 
-from factories import headers_for, make_application, make_user
+from factories import headers_for, make_application, make_server, make_user
 
 
 @pytest.fixture
@@ -89,3 +90,35 @@ def test_a_stale_recorded_container_keeps_the_compose_fallback(
     assert response.get_json()['logs'] == 'fallback-ready'
     direct.assert_not_called()
     compose.assert_called_once()
+
+
+def test_remote_logs_never_resolve_a_container_on_the_panel(
+        client, db_session, owner):
+    server = make_server(db_session, name='remote-runtime')
+    application = make_application(
+        db_session,
+        name='remote-api',
+        root_path='/srv/remote-api',
+        compose_file='compose.yaml',
+        container_id='runtime-container-id',
+        server_id=server.id,
+        user_id=owner.id,
+    )
+
+    with patch('app.api.apps.DockerService.get_container') as inspect, \
+            patch('app.api.apps.DockerService.get_container_logs') as direct, \
+            patch('app.api.apps.RemoteDockerService.compose_logs',
+                  return_value={'success': True,
+                                'data': {'logs': 'remote-ready'}}) as remote:
+        response = client.get(
+            f'/api/v1/apps/{application.id}/logs?lines=75',
+            headers=headers_for(owner),
+        )
+
+    assert response.status_code == 200
+    assert response.get_json()['logs'] == 'remote-ready'
+    inspect.assert_not_called()
+    direct.assert_not_called()
+    remote.assert_called_once_with(
+        server.id, os.path.join('/srv/remote-api', 'compose.yaml'), tail=75,
+        user_id=str(owner.id))

@@ -38,6 +38,8 @@ Changes after 1.9.28 on the development branch.
 - Resolve application logs and metrics from the recorded runtime container
   before falling back to Compose files and name matching, and render JSON log
   lines as readable structured entries (PR #136).
+- Keep remote application log requests on their assigned server instead of
+  looking up the recorded container on the panel host.
 - Close the container inspector when opening Logs or Exec so it can no longer
   cover those surfaces (PR #137).
 
