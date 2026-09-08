@@ -31,7 +31,8 @@ release history; historical `agent-v*` tags are not panel releases.
 ### Fixed
 
 - Refresh the bundled extension registry and generated API inventories.
-- Raise the clean-checkout backend test floor from 5,110 to 5,197 tests.
+- Normalize usage-report user and workspace filters before quota calculations.
+- Raise the clean-checkout backend test floor from 5,110 to 5,205 tests.
 
 [Source changes since 1.10.0](https://github.com/jhd3197/ServerKit/compare/v1.10.0...v1.11.0).
 

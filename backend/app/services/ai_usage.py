@@ -171,11 +171,13 @@ def report(args):
     days = ai_management.number(args.get('days', 30), 'Days', 1, 366, integer=True)
     from datetime import timedelta
     query = AiRun.query.filter(AiRun.created_at >= datetime.utcnow() - timedelta(days=days))
+    scope_ids = {'user_id': None, 'workspace_id': None}
     for key in ('profile', 'connection_id', 'user_id', 'workspace_id'):
         value = args.get(key)
         if value:
             if key.endswith('_id') and key != 'connection_id':
                 value = ai_management.number(value, key, 1, 2147483647, integer=True)
+                scope_ids[key] = value
             query = query.filter(getattr(AiRun, key) == value)
     rows = query.order_by(AiRun.created_at.desc()).all()
     groups = {key: {} for key in ('daily', 'profile', 'model', 'connection_id', 'user_id', 'workspace_id')}
@@ -196,6 +198,6 @@ def report(args):
     totals['average_duration_ms'] = totals['duration_ms'] / len(rows) if rows else 0
     offset = ai_management.number(args.get('offset', 0), 'Offset', 0, 10000000, integer=True)
     return {'totals': totals, 'groups': {key: list(value.values()) for key, value in groups.items()},
-            'allowances': quota_status(ai_management.settings(), args.get('user_id'), args.get('workspace_id')),
+            'allowances': quota_status(ai_management.settings(), scope_ids['user_id'], scope_ids['workspace_id']),
             'runs': [row.to_dict() for row in rows[offset:offset + 50]],
             'has_more': offset + 50 < len(rows), 'next_offset': offset + 50}

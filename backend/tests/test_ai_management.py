@@ -239,7 +239,7 @@ def test_degradation_switches_only_to_known_cheaper_connection(app, client, auth
     assert second['usage']['budget']['exceeded'] is True
 
 
-def test_scoped_allowances_and_unknown_cost_are_conservative(app, client, auth_headers, setup_ai):
+def test_scoped_allowances_and_unknown_cost_are_conservative(app, client, auth_headers, setup_ai, monkeypatch):
     from factories import make_workspace
     configure(client, auth_headers, user_monthly_limit_usd=1, workspace_monthly_limit_usd=1)
     with app.app_context():
@@ -260,6 +260,29 @@ def test_scoped_allowances_and_unknown_cost_are_conservative(app, client, auth_h
         assert AiRun.query.one().budget_charge == 0.5
         assert ai_usage.report({'user_id': other.id})['totals']['runs'] == 0
         assert ai_usage.report({'workspace_id': workspace.id})['totals']['tokens'] == 10
+        original_quota_status = ai_usage.quota_status
+
+        def typed_quota_status(config, user_id, workspace_id):
+            assert type(user_id) is int
+            assert type(workspace_id) is int
+            return original_quota_status(config, user_id, workspace_id)
+
+        monkeypatch.setattr(ai_usage, 'quota_status', typed_quota_status)
+        response = client.get('/api/v1/ai/usage', query_string={
+            'user_id': str(user.id), 'workspace_id': str(workspace.id),
+        }, headers=auth_headers)
+        assert response.status_code == 200
+        assert response.get_json()['allowances'] == mine
+        assert response.get_json()['totals']['tokens'] == 10
+
+
+@pytest.mark.parametrize('scope', ['user_id', 'workspace_id'])
+@pytest.mark.parametrize('value', ['', 'invalid', '0', '1.5'])
+def test_usage_scope_query_validation(client, auth_headers, scope, value):
+    response = client.get('/api/v1/ai/usage', query_string={scope: value}, headers=auth_headers)
+    assert response.status_code == (200 if value == '' else 400)
+    if value == '':
+        assert all(item['scope'] == 'Panel' for item in response.get_json()['allowances'])
 
 
 def test_resume_rechecks_workspace_membership(app, client, auth_headers, setup_ai):
