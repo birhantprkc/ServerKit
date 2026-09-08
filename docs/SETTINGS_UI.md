@@ -36,6 +36,15 @@ model discovery and exact IDs, secret preservation, assistant enable persistence
 and failures, notification scope, and section action placement. CI runs it and
 uploads screenshots from `frontend/test-results/`.
 
+AI management reuses `ModelBinding`/`ModelPicker`, `SegControl`, `FormField`,
+`Switch`, `DataTable`, `DataTableFooter`, and `Drawer`. Task-role forms, routing
+and fallback candidates, and usage reports share those controls. Keep connection
+credentials in their own editor; reference saved connections everywhere else.
+Inherited model roles must show their effective connection/model, and monetary
+figures must show their currency. Browser coverage includes saving/reloading
+roles, previewing draft routing, model metadata, usage details, chat task payloads,
+per-response allowance display, and narrow-screen overflow.
+
 Provider discovery tests do not contact external providers. Live connectivity
 must be verified separately with a configured connection. Model capabilities and
 pricing should only be shown when supplied by a trustworthy provider catalog;

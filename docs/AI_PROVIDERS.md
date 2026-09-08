@@ -10,12 +10,14 @@ and refreshes the chat UI. Disabling blocks new messages in both chat endpoints
 while retaining conversation history. Limits and protections have their own Save
 action; saving a connection preserves unsaved changes to those settings.
 
-New chats offer a connection selector and an optional model override. Once a
-chat starts, its connection and model stay fixed. Changing the panel default
-does not reroute existing chats. You can rotate a connection's credentials, but
+New chats offer a task, model role, and optional connection/model override.
+The selected connection and model are saved with the conversation. Changing
+the panel default does not reroute existing chats. Configured fallback or budget
+degradation may switch the saved binding before a turn produces output.
+You can rotate a connection's credentials, but
 changing a provider or endpoint used by existing chats requires a new connection.
-Delete those chats before deleting their connection, and select another default
-before deleting the current default.
+Delete those chats and remove task/routing/fallback references before deleting
+their connection, and select another default before deleting the current default.
 
 ## Native providers and gateways
 
@@ -60,18 +62,111 @@ it. Vertex Gemini requires an explicit API key; Vertex Claude requires a project
 location, and access token. Ambient cloud credentials are not a connection option.
 
 Existing assistant RBAC, redaction, and write-action confirmations remain active.
-Gateway routing aliases may have unknown pricing; enforce authoritative spending
-limits at the gateway. Automatic fallback to another connection is not enabled.
+The picker includes catalog prices per million input/output tokens, context and
+output limits, and tools, vision, reasoning, and structured-output capabilities.
+Capability filters show only confirmed support. Missing metadata stays unknown.
+Gateway aliases are not assigned an upstream model's price or capabilities.
+Discovering a saved connection caches its nonsecret catalog; changing its
+configuration clears that cache. Manual IDs remain supported.
 
-The per-conversation cost ceiling uses Prompture's `hard_stop` policy for new
-and resumed conversations (default $0.50; zero disables it). It checks reported
-cumulative usage before each model call, so a final call can overshoot the
-remaining amount. Budget stops return a clear message, and usage is persisted
-even if the turn stops before producing an answer. This is not an authoritative
-billing limit when provider pricing is unavailable.
+## Task models and execution
 
-See [AI management review](AI_MANAGEMENT_REVIEW.md) for the Prompture and
-AgentSite source review and the proposed task profiles, routing, and reporting.
+**Task models and behavior** assigns a saved connection and exact model ID to
+Utility, Standard, and Advanced. Standard inherits the panel default; Utility
+and Advanced inherit Standard when unset. The UI shows the inherited binding.
+Prompture's `ModelResolver` resolves these slots before execution.
+
+| Task | Default role | Runtime behavior |
+| --- | --- | --- |
+| Chat | Standard | Existing assistant tools and confirmations, or simple text mode |
+| Summarize | Utility | Summarizes supplied text and attached context without tools |
+| Extract structured facts | Utility | Prompture validates an object with `summary`, `facts`, and `warnings`; no tools |
+| Read-only diagnosis | Advanced | Only tools marked read-only and authorized for the caller; bounded tool rounds |
+
+An explicit connection/model override wins, followed by an explicit role.
+Without either, enabled automatic routing uses the approved pool; otherwise
+the task's role is used. Existing conversations retain their task and binding.
+Advanced models never grant additional permissions.
+
+Routing uses Prompture's cost-optimized, balanced, quality-first, or fast
+strategy, with discovery restricted to administrator-approved saved bindings.
+Candidate capability tiers guide its heuristics; “fast” is not a measured latency
+guarantee. The routing preview runs against the unsaved draft without making
+a model call. Each run records the selection strategy and explanation.
+
+Fallback is opt-in and tries the ordered list with each candidate's own endpoint
+and credentials. It only runs before any provider output has been delivered.
+The unused legacy `fallback_models` settings field is rejected; fallback
+candidates must include a saved connection ID in `/ai/management`.
+Once output or a tool response starts, a failure ends that turn; actions are
+never replayed on another connection. The adapter avoids Prompture's ambient
+credential fallback path. The actual selected model appears in run reporting.
+
+## Generation and spending controls
+
+Generation controls are applied to actual conversations: maximum output tokens
+per response, lifetime conversation tokens, history messages, tool rounds, and
+tool-result characters. Temperature is forwarded only with catalog-confirmed
+support; reasoning effort is forwarded only to supported OpenAI reasoning models.
+Unsupported settings retain provider defaults. Arbitrary driver JSON and detached
+tool timeouts are not exposed.
+
+The conversation cost ceiling defaults to $0.50; zero disables it. Select:
+
+- **Stop at the limit:** check cumulative cost/tokens before every provider call.
+- **Warn and continue:** retain usage and show the exceeded allowance in chat.
+- **Use a cheaper model near the limit, then stop:** at 80% of the cost allowance,
+  switch before a turn to the first configured fallback with lower known combined
+  input/output rates, then enforce the hard ceiling. Unknown prices are not compared.
+
+Monthly allowances can apply panel-wide, per user, and per workspace. Workspace
+attribution is captured from the active workspace when a chat starts and access
+is rechecked on resume. All-workspace chats still use panel/user allowances.
+Reservations prevent concurrent runs from all consuming the same remaining
+allowance in ServerKit's single worker. Each run stops further calls once its
+reservation is spent. Unknown-cost attempts conservatively consume that
+reservation. A restarted worker marks abandoned runs interrupted and retains
+their conservative charge.
+
+Limits use reported/estimated usage; a final call can overshoot. Unknown gateway
+pricing cannot enforce a billing ceiling. Use provider/gateway limits for
+authoritative spending enforcement.
+
+## Usage and plugin integration
+
+Each response shows its actual model, per-run tokens and cost source, duration,
+provider calls/errors, routing reason, and remaining conversation allowance.
+Reloading history retains those run details. **AI usage** provides administrator
+reports by period, role, model, connection, user, and workspace, with daily
+breakdowns, remaining monthly allowances, and a drawer for provider attempts.
+Unknown/partial pricing is labeled separately from known cost.
+
+Prompture `UsageSession` collects each actual driver call; its cost calculation
+and `BudgetState` checks are reused. ServerKit stores one migration-backed
+`AiRun` per turn, with idempotent completion. Cumulative Conversation snapshots
+remain for lifetime limits and are never summed as per-run costs. Run records
+survive transcript deletion. Reporting starts with this migration; older
+transcripts are not backfilled with invented per-call costs.
+
+The plugin SDK `ask()` and `ask_stream()` use the same enable state, role/routing
+policy, guardrails, limits, driver adapter, and ledger without creating chat
+transcripts. Both accept optional `profile` and `workflow` arguments:
+
+```python
+from app.plugins_sdk import ai
+
+summary = ai.ask(text, workflow='summarize')
+facts = ai.ask(text, workflow='extract', profile='utility')
+```
+
+The implementation was checked against local Prompture `d36872b` and AgentSite
+`db323d4`. AgentSite informed the model-picker/reporting interactions. Prompture
+1.11.0 already supplies the relevant resolver, router, structured output, budget,
+and usage machinery. ServerKit supplies credential binding, authorization,
+scope-filtered accounting, persistence, and UI. In this SDK version, router
+preferences are not an allowlist and tracker budget scopes do not filter usage
+by tenant; ServerKit explicitly enforces both boundaries. No upstream issue
+or external message was sent.
 
 ## Upgrade behavior
 
@@ -82,3 +177,7 @@ different provider cannot borrow the current connection's credentials: start a
 new chat using an explicitly configured connection. Resumed chats reconstruct
 their Prompture driver with their saved connection, and restore history and
 usage without exporting credentials or using global provider configuration.
+
+Migration `099_ai_management` adds cached model metadata, conversation task
+snapshots, and the durable run ledger. Apply normal Alembic upgrades before
+starting the updated backend. No SDK upgrade or manual schema creation is needed.

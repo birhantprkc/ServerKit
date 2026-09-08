@@ -22,6 +22,17 @@ try {
         let rejectToggle = false;
         let savedConnection;
         let savedPreferences;
+        let sentChat;
+        let management = {
+            profiles: { utility: null, standard: null, advanced: null }, routing_enabled: false, strategy: 'balanced', pool: [],
+            fallback_enabled: false, fallbacks: [], budget_policy: 'hard_stop', max_tokens: 0, max_output_tokens: 2048,
+            max_tool_rounds: 6, max_tool_result_length: 4000, max_history_messages: 40, temperature: null, reasoning_effort: null,
+            monthly_limit_usd: 0, user_monthly_limit_usd: 0, workspace_monthly_limit_usd: 0, reservation_usd: 0.5,
+        };
+        const usage = { run_id: 'run-1', model: 'openai_compatible/team/cheap', connection_id: 'connection-1', profile: 'utility', workflow: 'summarize',
+            reason: 'Selected Utility task model', cost: 0.02, total_tokens: 120, cost_source: 'estimated', call_count: 1, errors: 0, duration_ms: 1200,
+            budget: { cost_remaining: 0.48, tokens_remaining: null },
+            attempts: [{ connection_id: 'connection-1', model: 'team/cheap', status: 'success', total_tokens: 120 }] };
         let connection = { id: 'connection-1', name: 'Local gateway', provider: 'openai_compatible', model: 'team/default', config: { endpoint: 'http://gateway.test/v1' }, secrets_set: ['api_key'] };
         await page.route('**/api/v1/**', async (route) => {
             const path = new URL(route.request().url()).pathname;
@@ -30,6 +41,21 @@ try {
             if (path.endsWith('/auth/setup-status')) payload = { needs_setup: false };
             else if (path.endsWith('/auth/me')) payload = { user: { id: 1, username: 'operator', email: 'operator@example.test', role: 'admin', created_at: '2026-01-01' } };
             else if (path.endsWith('/ai/status')) payload = { enabled, configured: true };
+            else if (path.endsWith('/ai/management/preview')) payload = { connection_id: connection.id, model: 'team/cheap', reason: 'Approved Utility candidate' };
+            else if (path.endsWith('/ai/management')) {
+                if (method === 'PUT') management = route.request().postDataJSON();
+                payload = management;
+            } else if (path.endsWith('/ai/usage')) payload = {
+                totals: { cost: 0.02, tokens: 120, runs: 1, errors: 0, unknown_cost_runs: 0, average_duration_ms: 1200 },
+                groups: { model: [{ label: usage.model, cost: 0.02, tokens: 120, runs: 1 }], profile: [{ label: 'utility', cost: 0.02, tokens: 120, runs: 1 }] },
+                runs: [{ id: 'run-1', model: usage.model, profile: 'utility', status: 'success', cost: 0.02, reason: usage.reason, created_at: '2026-09-08T12:00:00Z', usage }],
+                allowances: [{ scope: 'Panel', remaining: 9.98, limit: 10 }], has_more: false, next_offset: 50,
+            };
+            else if (path.endsWith('/ai/chat/stream')) {
+                sentChat = route.request().postDataJSON();
+                const events = [['open', { conversation_id: 'chat-1' }], ['run_start', usage], ['text_delta', { text: 'The server is healthy.' }], ['done', { conversation_id: 'chat-1', usage }]];
+                return route.fulfill({ contentType: 'text/event-stream', body: events.map(([name, data]) => `event: ${name}\ndata: ${JSON.stringify(data)}\n\n`).join('') });
+            }
             else if (path.endsWith('/ai/settings')) {
                 if (method === 'PUT') {
                     const body = route.request().postDataJSON();
@@ -43,7 +69,8 @@ try {
                 { name: 'endpoint', label: 'API base URL', type: 'url', required: true },
                 { name: 'api_key', label: 'API key', type: 'text', secret: true },
             ] }] };
-            else if (path.endsWith('/ai/connections/probe')) payload = { models: ['team/default', 'team/reasoning', 'team/fast'], source: 'live' };
+            else if (path.endsWith('/ai/connections/probe')) payload = { models: ['team/default', 'team/reasoning', 'team/fast'], source: 'live',
+                model_details: [{ id: 'team/default' }, { id: 'team/reasoning', reasoning: true, tools: true, context_window: 128000, max_output_tokens: 8192, pricing: { input: 1, output: 3 } }, { id: 'team/fast' }] };
             else if (path.endsWith('/ai/connections/connection-1')) {
                 savedConnection = route.request().postDataJSON();
                 connection = { ...connection, ...savedConnection, secrets_set: ['api_key'] };
@@ -62,8 +89,11 @@ try {
         await page.locator('#ai-max-cost').fill('1.25');
         await page.getByRole('button', { name: 'Discover models', exact: true }).click();
         await page.getByRole('button', { name: 'Browse models (3)', exact: true }).click();
+        await page.getByLabel('Capability', { exact: true }).selectOption('reasoning');
+        await page.getByText('1 USD input / 3 USD output per 1M tokens', { exact: false }).waitFor();
+        assert.equal(await page.getByRole('option').filter({ hasText: 'team/default' }).count(), 0);
         await page.getByPlaceholder('Search models…').fill('reasoning');
-        await page.getByRole('option', { name: 'team/reasoning', exact: true }).click();
+        await page.getByRole('option', { name: /^team\/reasoning/ }).click();
         assert.equal(await page.locator('#ai-model').inputValue(), 'team/reasoning');
         await page.getByRole('button', { name: 'Save connection', exact: true }).click();
         await page.getByText('Connection saved.', { exact: false }).waitFor();
@@ -82,6 +112,46 @@ try {
         await page.locator('#ai-enabled').click();
         await page.locator('[data-testid="ai-state"][data-enabled="false"][data-ready="false"]').waitFor({ state: 'attached' });
         await page.screenshot({ path: `test-results/settings-ai-${theme}.png`, fullPage: true });
+
+        await page.getByRole('tab', { name: 'Task models and behavior' }).click();
+        await page.locator('#ai-profile-utility-connection').selectOption('connection-1');
+        await page.locator('#ai-profile-utility-model').fill('team/cheap');
+        await page.getByRole('button', { name: 'Add model candidate' }).first().click();
+        await page.locator('#ai-pool-0-model').fill('team/cheap');
+        await page.locator('#ai-tier-0').selectOption('budget');
+        await page.locator('#ai-routing_enabled').click();
+        await page.locator('#ai-routing-sample').fill('Summarize server health');
+        await page.getByRole('button', { name: 'Preview routing' }).click();
+        await page.getByText('Approved Utility candidate').waitFor();
+        await page.locator('#ai-max_output_tokens').fill('1024');
+        await page.getByRole('button', { name: 'Save AI management settings' }).click();
+        await page.getByText('AI management settings saved.').waitFor();
+        assert.equal(management.profiles.utility.model, 'team/cheap');
+        assert.equal(management.routing_enabled, true);
+        assert.equal(Number(management.max_output_tokens), 1024);
+        await page.screenshot({ path: `test-results/settings-ai-management-${theme}.png`, fullPage: true });
+        await page.reload();
+        await page.getByRole('tab', { name: 'Task models and behavior' }).click();
+        assert.equal(await page.locator('#ai-profile-utility-model').inputValue(), 'team/cheap');
+        await page.getByRole('tab', { name: 'AI usage', exact: true }).click();
+        await page.getByRole('heading', { name: 'Run details' }).waitFor();
+        await page.getByRole('button', { name: 'Details', exact: true }).click();
+        await page.getByRole('dialog').getByText('Cost source: estimated').waitFor();
+        await page.screenshot({ path: `test-results/settings-ai-usage-${theme}.png`, fullPage: true });
+        await page.keyboard.press('Escape');
+        enabled = true;
+        await visit('chat');
+        await page.locator('#ai-chat-workflow').selectOption('summarize');
+        await page.locator('#ai-chat-profile').selectOption('utility');
+        await page.getByRole('textbox', { name: 'Message the assistant' }).fill('Summarize server health');
+        await page.getByRole('textbox', { name: 'Message the assistant' }).press('Enter');
+        await page.locator('.sk-ai-message__usage summary').click();
+        await page.locator('.sk-ai-message__usage summary').getByText('0.02 USD', { exact: false }).waitFor();
+        await page.getByText('Conversation cost allowance remaining:', { exact: false }).waitFor();
+        assert.equal(sentChat.workflow, 'summarize');
+        assert.equal(sentChat.profile, 'utility');
+        assert(!sentChat.connection_id, 'A default connection override must not bypass task roles');
+        await page.screenshot({ path: `test-results/ai-chat-usage-${theme}.png`, fullPage: true });
 
         await visit('notifications');
         await page.getByRole('heading', { name: 'Notification Channels' }).waitFor();
@@ -136,6 +206,13 @@ try {
             await visit(pane);
             await page.locator('.settings-card, .settings-form').first().waitFor();
             assert(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `${pane} overflows on mobile`);
+            if (pane === 'ai') {
+                for (const tab of ['Task models and behavior', 'AI usage']) {
+                    await page.getByRole('tab', { name: tab, exact: true }).click();
+                    assert(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `${tab} overflows on mobile`);
+                }
+                await page.screenshot({ path: `test-results/settings-ai-mobile-${theme}.png`, fullPage: true });
+            }
             if (pane === 'notifications') {
                 await page.getByRole('button', { name: 'Save Preferences' }).waitFor();
                 const actions = await page.locator('.settings-actions--footer > button').evaluateAll((nodes) => nodes.map((node) => ({ top: node.getBoundingClientRect().top, bottom: node.getBoundingClientRect().bottom })));
