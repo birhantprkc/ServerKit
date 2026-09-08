@@ -85,7 +85,7 @@
     }
 
     &.active {
-        @include status-variant(var(--accent-bright), var(--accent-bg));
+        @include status-variant(var(--text-primary), var(--accent-bg));
     }
 }
 
@@ -122,7 +122,7 @@
     }
 
     &.active {
-        @include status-variant(var(--accent-bright), var(--accent-bg));
+        @include status-variant(var(--text-primary), var(--accent-bg));
 
         svg {
             stroke: var(--accent-bright);
@@ -144,6 +144,10 @@
 // Settings Content Area
 .settings-content {
     min-width: 0;
+
+    // Status is carried by the tint and border; copy keeps readable contrast.
+    .alert { color: $text-primary; }
+    .settings-card > .form-group:last-child { margin-bottom: 0; }
 
     // Settings panes used to drop their table straight onto the page
     // background, so a tab read as unfinished next to /servers or /services —
@@ -774,6 +778,18 @@
     display: flex;
     gap: $space-2;
     margin-top: $space-3;
+
+    &--footer {
+        justify-content: flex-end;
+        flex-wrap: wrap;
+        gap: $space-3;
+        padding-top: $space-4;
+        border-top: 1px solid $border-default;
+
+        @media (max-width: $breakpoint-sm) {
+            > .btn { flex: 1 1 100%; }
+        }
+    }
 }
 
 .invite-result-note {
@@ -2533,7 +2549,13 @@
 }
 
 // Semantic layouts and controls; declarations preserved from the legacy compatibility layer.
-.settings-notification-option { display: flex; align-items: center; gap: 0.75rem; }
+.settings-notification-option {
+    display: flex;
+    align-items: center;
+    gap: $space-3;
+    > .ui-switch { order: 1; }
+    > .ui-label { flex: 1; margin-bottom: 0; line-height: 1.5; }
+}
 .settings-site-action-label { display: flex; align-items: center; gap: 0.5rem; }
 .settings-webhook-actions { text-align: right; }
 .settings-webhook-action-icon { margin-inline-end: 0.5rem; }
@@ -2545,3 +2567,33 @@
 .settings-webhook-name { font-weight: $font-weight-medium; }
 .settings-webhook-form > * + * { margin-top: 1rem; }
 .settings-webhook-secret-field > * + * { margin-top: 0.5rem; }
+
+// Connection editor: one surface, grouped credentials, responsive model browser.
+.ai-connections {
+    .form-row > * { min-width: 0; }
+    &__fields {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: $space-4;
+        @media (max-width: $breakpoint-sm) { grid-template-columns: 1fr; }
+    }
+    .settings-actions { flex-wrap: wrap; margin-top: $space-4; }
+}
+
+.sk-model-picker {
+    display: flex;
+    align-items: center;
+    gap: $space-2;
+    > .ui-input { min-width: 0; flex: 1; }
+    > button { flex-shrink: 0; }
+    &__menu {
+        width: min(520px, calc(100vw - 32px));
+        padding: 0;
+    }
+    &__name { flex: 1; overflow-wrap: anywhere; font-family: $font-mono; }
+    @media (max-width: $breakpoint-sm) {
+        flex-direction: column;
+        align-items: stretch;
+        > .ui-input { flex: auto; }
+    }
+}

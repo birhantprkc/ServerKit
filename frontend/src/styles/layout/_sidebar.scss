@@ -6,7 +6,7 @@
     width: $sidebar-width;
     // Subtle top→bottom gradient (theme-aware: dark rail in dark mode, light in
     // light mode). Redesign "infra console" look — see docs/REDESIGN_MAP.md §2.
-    background: linear-gradient(180deg, var(--bg-sidebar), var(--bg-body));
+    background: var(--bg-sidebar);
     border-right: 1px solid $border-subtle;
     display: flex;
     flex-direction: column;

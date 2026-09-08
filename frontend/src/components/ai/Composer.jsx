@@ -16,6 +16,7 @@ const Composer = () => {
         stop,
         isStreaming,
         providerConfigured,
+        enabled,
         attachments,
         addAttachment,
         removeAttachment,
@@ -75,7 +76,7 @@ const Composer = () => {
                     ref={textareaRef}
                     className="sk-ai-composer__input"
                     rows={1}
-                    placeholder={providerConfigured ? t('app.composer.askAboutYourServers', 'Ask about your servers…') : t('app.composer.assistantNotConfigured', 'Assistant not configured')}
+                    placeholder={providerConfigured ? t('app.composer.askAboutYourServers', 'Ask about your servers…') : !enabled ? t('ai.settings.disabled', 'Assistant disabled') : t('app.composer.assistantNotConfigured', 'Assistant not configured')}
                     value={value}
                     disabled={!providerConfigured}
                     onChange={onInput}

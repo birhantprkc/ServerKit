@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
+import { SegControl } from '../ds/SegControl';
 import EmptyState from '../EmptyState';
 import useSettingFocus from '../../hooks/useSettingFocus';
 import { useTranslation } from 'react-i18next';
@@ -16,6 +16,8 @@ const NotificationsTab = () => {
     const { isAdmin, user } = useAuth();
     const register = useSettingFocus();
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState(false);
+    const [loadAttempt, setLoadAttempt] = useState(0);
     const [saving, setSaving] = useState(false);
     const [testing, setTesting] = useState(null);
     const [message, setMessage] = useState(null);
@@ -42,43 +44,31 @@ const NotificationsTab = () => {
     const severityOptions = ['critical', 'warning', 'info', 'success'];
 
     useEffect(() => {
-        loadUserPrefs();
-        if (isAdmin) loadConfig();
-    }, [isAdmin]);
-
-    async function loadConfig() {
-        try {
-            const data = await api.getNotificationsConfig();
-            setConfig(prev => ({
-                discord: { ...prev.discord, ...data.discord },
-                slack: { ...prev.slack, ...data.slack },
-                telegram: { ...prev.telegram, ...data.telegram },
-                email: { ...prev.email, ...data.email },
-                generic_webhook: { ...prev.generic_webhook, ...data.generic_webhook }
-            }));
-        } catch (err) {
-            console.error('Failed to load notification config:', err);
-        } finally {
-            setLoading(false);
-        }
-    }
-
-    async function loadUserPrefs() {
-        try {
-            const data = await api.getUserNotificationPreferences();
-            setUserPrefs(prev => ({ ...prev, ...data }));
-        } catch (err) {
-            console.error('Failed to load user notification preferences:', err);
-        } finally {
-            setLoading(false);
-        }
-    }
+        let active = true;
+        setLoading(true);
+        setLoadError(false);
+        Promise.all([api.getUserNotificationPreferences(), isAdmin ? api.getNotificationsConfig() : Promise.resolve(null)])
+            .then(([prefs, data]) => {
+                if (!active) return;
+                setUserPrefs((prev) => ({ ...prev, ...prefs }));
+                if (data) setConfig((prev) => Object.fromEntries(
+                    Object.entries(prev).map(([channel, defaults]) => [channel, { ...defaults, ...data[channel] }])
+                ));
+            })
+            .catch((error) => {
+                if (!active) return;
+                setLoadError(true);
+                setMessage({ type: 'error', text: error.message || t('notifications.loadFailed', 'Could not load notification settings. Reload to try again.') });
+            })
+            .finally(() => { if (active) setLoading(false); });
+        return () => { active = false; };
+    }, [isAdmin, loadAttempt, t]);
 
     async function handleSaveUserPrefs() {
         setSaving(true);
         setMessage(null);
         try {
-            await api.updateUserNotificationPreferences(userPrefs);
+            await api.updateUserNotificationPreferences({ ...userPrefs, channels: (userPrefs.channels || []).filter((channel) => channel !== 'slack') });
             setMessage({ type: 'success', text: 'Your notification preferences have been saved' });
         } catch (err) {
             setMessage({ type: 'error', text: err.message });
@@ -145,27 +135,30 @@ const NotificationsTab = () => {
         return <EmptyState loading title={t('app.notificationsTab.loadingNotificationSettings', 'Loading notification settings…')} />;
     }
 
+    if (loadError) return <EmptyState title={t('notifications.loadFailed', 'Could not load notification settings. Reload to try again.')}
+        description={message?.text} action={<Button onClick={() => setLoadAttempt((attempt) => attempt + 1)}>{t('common.retry', 'Retry')}</Button>} />;
+
     const userPrefsUI = (
         <div className="user-notification-prefs">
             <div {...register('notifications-enable', 'settings-card')}>
                 <div className="form-group">
                     <div className="settings-notification-option">
-                        <Switch
+                        <Switch id="notifications-enabled" disabled={saving}
                             checked={userPrefs.enabled}
                             onCheckedChange={(checked) => setUserPrefs({...userPrefs, enabled: checked})}
                         />
-                        <Label>{t('app.notificationsTab.enableNotificationsForMyAccount', 'Enable notifications for my account')}</Label>
+                        <Label htmlFor="notifications-enabled">{t('app.notificationsTab.enableNotificationsForMyAccount', 'Enable notifications for my account')}</Label>
                     </div>
                 </div>
             </div>
 
             <div {...register('notifications-channels', 'settings-card')}>
                 <h3>{t('app.notificationsTab.notificationChannels', 'Notification Channels')}</h3>
-                <p>{t('app.notificationsTab.chooseHowYouWantToReceive', 'Choose how you want to receive notifications')}</p>
+                <p>{t('notifications.personalChannelsHint', 'Choose destinations for your account. Slack and shared webhooks are managed in Delivery settings.')}</p>
                 <div className="channel-toggles">
-                    {['email', 'discord', 'slack', 'telegram'].map(ch => (
+                    {['email', 'discord', 'telegram'].map(ch => (
                         <label key={ch} className="channel-toggle">
-                            <Checkbox
+                            <Switch disabled={saving} aria-label={ch.charAt(0).toUpperCase() + ch.slice(1)}
                                 checked={userPrefs.channels?.includes(ch)}
                                 onCheckedChange={(checked) => {
                                     const channels = checked
@@ -233,8 +226,8 @@ const NotificationsTab = () => {
                 <p>{t('app.notificationsTab.whichAlertTypesDoYouWant', 'Which alert types do you want to receive?')}</p>
                 <div className="severity-toggles">
                     {severityOptions.map(severity => (
-                        <label key={severity} className={`severity-toggle ${severity}`}>
-                            <Checkbox
+                        <label key={severity} className="severity-toggle">
+                            <Switch disabled={saving} aria-label={severity.charAt(0).toUpperCase() + severity.slice(1)}
                                 checked={userPrefs.severities?.includes(severity)}
                                 onCheckedChange={(checked) => {
                                     const severities = checked
@@ -260,7 +253,7 @@ const NotificationsTab = () => {
                         apps: 'Application Events'
                     }).map(([key, label]) => (
                         <label key={key} className="category-toggle">
-                            <Checkbox
+                            <Switch disabled={saving} aria-label={label}
                                 checked={userPrefs.categories?.[key] !== false}
                                 onCheckedChange={(checked) => setUserPrefs({
                                     ...userPrefs,
@@ -278,14 +271,14 @@ const NotificationsTab = () => {
                 <p>{t('app.notificationsTab.pauseNonCriticalNotificationsDuringThese', 'Pause non-critical notifications during these hours')}</p>
                 <div className="form-group">
                     <div className="settings-notification-option">
-                        <Switch
+                        <Switch id="notifications-quiet-hours" disabled={saving}
                             checked={userPrefs.quiet_hours?.enabled}
                             onCheckedChange={(checked) => setUserPrefs({
                                 ...userPrefs,
                                 quiet_hours: { ...userPrefs.quiet_hours, enabled: checked }
                             })}
                         />
-                        <Label>{t('app.notificationsTab.enableQuietHours', 'Enable quiet hours')}</Label>
+                        <Label htmlFor="notifications-quiet-hours">{t('app.notificationsTab.enableQuietHours', 'Enable quiet hours')}</Label>
                     </div>
                 </div>
                 {userPrefs.quiet_hours?.enabled && (
@@ -316,7 +309,7 @@ const NotificationsTab = () => {
                 )}
             </div>
 
-            <div className="form-actions">
+            <div className="settings-actions settings-actions--footer">
                 <Button
                     variant="outline"
                     onClick={handleTestUserNotification}
@@ -378,30 +371,15 @@ const NotificationsTab = () => {
                 </div>
             )}
 
-            <div className="notification-tabs">
-                <Button variant="unstyled" type="button"
-                    className={`notification-tab ${activeSection === 'personal' ? 'active' : ''}`}
-                    onClick={() => setActiveSection('personal')}
-                >
-                    <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" fill="none" strokeWidth="2">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                        <circle cx="12" cy="7" r="4"/>
-                    </svg>
-                    {t('app.notificationsTab.myPreferences', 'My Preferences')}
-                </Button>
-                {isAdmin && (
-                    <Button variant="unstyled" type="button"
-                        className={`notification-tab ${activeSection === 'admin' ? 'active' : ''}`}
-                        onClick={() => setActiveSection('admin')}
-                    >
-                        <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" fill="none" strokeWidth="2">
-                            <circle cx="12" cy="12" r="3"/>
-                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-                        </svg>
-                        {t('app.notificationsTab.systemWebhooks', 'System Webhooks')}
-                    </Button>
-                )}
-            </div>
+            <SegControl value={activeSection} onChange={(section) => { setActiveSection(section); setMessage(null); }}
+                aria-label={t('notifications.scope', 'Notification settings scope')}
+                options={[
+                    { value: 'personal', label: t('app.notificationsTab.myPreferences', 'My Preferences') },
+                    ...(isAdmin ? [{ value: 'admin', label: t('notifications.deliverySettings', 'Delivery settings') }] : []),
+                ]} />
+            <p className="section-description">{activeSection === 'personal'
+                ? t('notifications.personalHint', 'Control notifications for your account. Save preferences to apply your changes.')
+                : t('notifications.deliveryHint', 'Configure shared destinations for server alerts. These settings affect everyone and are independent of personal preferences. Save a channel before sending a test.')}</p>
 
             {activeSection === 'personal' && userPrefsUI}
 
@@ -411,6 +389,14 @@ const NotificationsTab = () => {
                     <div key={channel.id} className={`notification-channel-card ${config[channel.id]?.enabled ? 'enabled' : ''}`}>
                         <div
                             className="channel-header"
+                            role="button" tabIndex={0} aria-expanded={expandedChannel === channel.id}
+                            aria-label={channel.name}
+                            onKeyDown={(event) => {
+                                if (event.key === 'Enter' || event.key === ' ') {
+                                    event.preventDefault();
+                                    setExpandedChannel(expandedChannel === channel.id ? null : channel.id);
+                                }
+                            }}
                             onClick={() => setExpandedChannel(expandedChannel === channel.id ? null : channel.id)}
                         >
                             <div className="channel-icon">{channel.icon}</div>
@@ -437,11 +423,11 @@ const NotificationsTab = () => {
                             <div className="channel-config">
                                 <div className="form-group">
                                     <div className="settings-notification-option">
-                                        <Switch
+                                        <Switch id={`notification-${channel.id}-enabled`} disabled={saving}
                                             checked={config[channel.id]?.enabled || false}
                                             onCheckedChange={(checked) => updateChannelConfig(channel.id, 'enabled', checked)}
                                         />
-                                        <Label>{t('common.actions.enable', 'Enable')} {channel.name}</Label>
+                                        <Label htmlFor={`notification-${channel.id}-enabled`}>{t('common.actions.enable', 'Enable')} {channel.name}</Label>
                                     </div>
                                 </div>
 
@@ -613,7 +599,7 @@ const NotificationsTab = () => {
                                         </div>
                                         <div className="form-group">
                                             <div className="settings-notification-option">
-                                                <Switch
+                                                <Switch disabled={saving} aria-label={t('app.notificationsTab.useTls', 'Use TLS')}
                                                     checked={config.email.smtp_tls !== false}
                                                     onCheckedChange={(checked) => updateChannelConfig('email', 'smtp_tls', checked)}
                                                 />
@@ -640,8 +626,8 @@ const NotificationsTab = () => {
                                     <Label>{t('app.notificationsTab.alertSeverities', 'Alert Severities')}</Label>
                                     <div className="severity-toggles">
                                         {severityOptions.map(severity => (
-                                            <label key={severity} className={`severity-toggle ${severity}`}>
-                                                <Checkbox
+                                            <label key={severity} className="severity-toggle">
+                                                <Switch disabled={saving} aria-label={severity.charAt(0).toUpperCase() + severity.slice(1)}
                                                     checked={config[channel.id]?.notify_on?.includes(severity) || false}
                                                     onCheckedChange={() => toggleSeverity(channel.id, severity)}
                                                 />

@@ -56,9 +56,9 @@ const ProfileTab = () => {
 
             <form onSubmit={handleSubmit} {...register('profile-username', 'settings-form')}>
                 <div className="form-group">
-                    <Label>{t('common.labels.username', 'Username')}</Label>
+                    <Label htmlFor="profile-username">{t('common.labels.username', 'Username')}</Label>
                     <Input
-                        type="text"
+                        id="profile-username" type="text"
                         value={formData.username}
                         onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                         required
@@ -66,9 +66,9 @@ const ProfileTab = () => {
                 </div>
 
                 <div className="form-group">
-                    <Label>{t('app.profileTab.emailAddress', 'Email Address')}</Label>
+                    <Label htmlFor="profile-email">{t('app.profileTab.emailAddress', 'Email Address')}</Label>
                     <Input
-                        type="email"
+                        id="profile-email" type="email"
                         value={formData.email}
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                         required
@@ -76,18 +76,17 @@ const ProfileTab = () => {
                 </div>
 
                 <div className="form-group">
-                    <Label>{t('app.profileTab.role', 'Role')}</Label>
-                    <Input type="text" value={user?.role || 'user'} disabled className="input-disabled" />
+                    <Label htmlFor="profile-role">{t('app.profileTab.role', 'Role')}</Label>
+                    <Input id="profile-role" type="text" value={user?.role || 'user'} readOnly />
                     <span className="form-help">{t('app.profileTab.contactAnAdministratorToChangeYour', 'Contact an administrator to change your role')}</span>
                 </div>
 
                 <div className="form-group">
-                    <Label>{t('app.profileTab.memberSince', 'Member Since')}</Label>
+                    <Label htmlFor="profile-member-since">{t('app.profileTab.memberSince', 'Member Since')}</Label>
                     <Input
-                        type="text"
+                        id="profile-member-since" type="text"
                         value={user?.created_at ? new Date(user.created_at).toLocaleDateString() : '-'}
-                        disabled
-                        className="input-disabled"
+                        readOnly
                     />
                 </div>
 

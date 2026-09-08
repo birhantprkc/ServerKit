@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Pill } from '@/components/ds/Pill';
-import { DataTable, DataTableFooter, ListToolbar } from '@/components/ds';
+import { DataTable, DataTableFooter } from '@/components/ds';
 import {
     useTableChrome, GridViewPicker, GridChips, GridFilterButton,
     GridToolsMenu, GridFilterDrawer,
@@ -270,7 +270,7 @@ const ApiKeysSection = () => {
                             size="sm"
                             onClick={() => handleRevoke(key.id)}
                             title={t('app.apiSettingsTab.revoke', 'Revoke')}
-                            className="text-destructive hover:text-destructive"
+                            className="api-settings__revoke"
                         >
                             <Trash2 size={14} />
                         </Button>
@@ -299,16 +299,15 @@ const ApiKeysSection = () => {
 
     return (
         <div {...register('api-keys', 'settings-card')}>
-            {/* The view name replaces this card's "API Keys" header: it is the
-                one card in the stack whose body is a table, and stacking a
-                title above the picker would be two names for one list. Create
-                Key moves into the toolbar and stays reachable while empty. */}
             <GridViewPicker
                 views={chrome.views}
                 label="keys"
                 onCreate={chrome.createView}
                 actions={(
                     <>
+                        <Button variant="default" size="sm" onClick={() => setShowModal(true)}>
+                            <Plus size={14} /> {t('app.apiSettingsTab.createKey', 'Create Key')}
+                        </Button>
                         <GridFilterButton
                             count={chrome.filterCount}
                             onClick={() => chrome.setDrawerOpen(true)}
@@ -317,15 +316,6 @@ const ApiKeysSection = () => {
                     </>
                 )}
             />
-            {/* The toolbar survives only because Create Key is the card's own
-                action, not the table's — everything that acts on the table
-                rides the view line above. */}
-            <ListToolbar>
-                <Button variant="default" size="sm" onClick={() => setShowModal(true)}>
-                    <Plus size={14} /> {t('app.apiSettingsTab.createKey', 'Create Key')}
-                </Button>
-            </ListToolbar>
-
             <GridChips {...chrome.chipProps} />
 
             {loading ? (
@@ -624,7 +614,7 @@ const WebhookSection = () => {
                                             variant="ghost"
                                             size="sm"
                                             onClick={() => handleDelete(sub.id)}
-                                            className="text-destructive hover:text-destructive"
+                                            className="api-settings__revoke"
                                         >
                                             <Trash2 size={14} /> {t('common.actions.delete', 'Delete')}
                                         </Button>
@@ -770,22 +760,22 @@ const AnalyticsSection = () => {
             ) : (
                 <>
                     {overview && (
-                        <div className="api-settings__stats-grid">
-                            <div className="api-settings__stat-card">
-                                <span className="api-settings__stat-value">{overview.total_requests.toLocaleString()}</span>
-                                <span className="api-settings__stat-label">{t('app.apiSettingsTab.totalRequests', 'Total Requests')}</span>
+                        <div className="stat-strip">
+                            <div className="stat-strip__item">
+                                <span className="stat-strip__value">{overview.total_requests.toLocaleString()}</span>
+                                <span className="stat-strip__label">{t('app.apiSettingsTab.totalRequests', 'Total Requests')}</span>
                             </div>
-                            <div className="api-settings__stat-card">
-                                <span className="api-settings__stat-value">{overview.avg_response_time_ms}ms</span>
-                                <span className="api-settings__stat-label">{t('app.apiSettingsTab.avgResponseTime', 'Avg Response Time')}</span>
+                            <div className="stat-strip__item">
+                                <span className="stat-strip__value">{overview.avg_response_time_ms}ms</span>
+                                <span className="stat-strip__label">{t('app.apiSettingsTab.avgResponseTime', 'Avg Response Time')}</span>
                             </div>
-                            <div className="api-settings__stat-card">
-                                <span className="api-settings__stat-value">{overview.error_rate}%</span>
-                                <span className="api-settings__stat-label">{t('app.apiSettingsTab.errorRate', 'Error Rate')}</span>
+                            <div className="stat-strip__item">
+                                <span className="stat-strip__value">{overview.error_rate}%</span>
+                                <span className="stat-strip__label">{t('app.apiSettingsTab.errorRate', 'Error Rate')}</span>
                             </div>
-                            <div className="api-settings__stat-card">
-                                <span className="api-settings__stat-value">{overview.success_count.toLocaleString()}</span>
-                                <span className="api-settings__stat-label">{t('app.apiSettingsTab.successful', 'Successful')}</span>
+                            <div className="stat-strip__item">
+                                <span className="stat-strip__value">{overview.success_count.toLocaleString()}</span>
+                                <span className="stat-strip__label">{t('app.apiSettingsTab.successful', 'Successful')}</span>
                             </div>
                         </div>
                     )}

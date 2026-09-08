@@ -22,6 +22,7 @@ const initialState = {
     mode: 'assistant',           // 'assistant' (tools + context) | 'simple'
     includeContext: true,
     providerConfigured: false,
+    enabled: false,
     statusLoaded: false,
     conversations: [],
     connections: [],
@@ -70,7 +71,7 @@ function reducer(state, action) {
         case 'SET_INCLUDE_CONTEXT':
             return { ...state, includeContext: action.value };
         case 'SET_STATUS':
-            return { ...state, providerConfigured: action.configured, statusLoaded: true };
+            return { ...state, enabled: action.enabled, providerConfigured: action.configured, statusLoaded: true };
         case 'SET_CONNECTIONS': {
             const selected = action.connections.find((connection) => connection.id === state.selectedConnection)
                 || action.connections.find((connection) => connection.id === action.defaultId);
@@ -225,8 +226,8 @@ export function AIProvider({ children }) {
             .then((data) => dispatch({ type: 'SET_CONNECTIONS', connections: data.connections || [], defaultId: data.default_connection_id }))
             .catch(() => {});
         api.aiStatus()
-            .then((s) => dispatch({ type: 'SET_STATUS', configured: !!s.configured }))
-            .catch(() => dispatch({ type: 'SET_STATUS', configured: false }));
+            .then((s) => dispatch({ type: 'SET_STATUS', enabled: !!s.enabled, configured: !!s.enabled && !!s.configured }))
+            .catch(() => dispatch({ type: 'SET_STATUS', enabled: false, configured: false }));
     }, []);
 
     useEffect(() => {
@@ -307,7 +308,7 @@ export function AIProvider({ children }) {
     // --- send a message ---
     const send = useCallback(async (prompt, opts = {}) => {
         const text = (prompt || '').trim();
-        if (!text || state.isStreaming) return;
+        if (!text || state.isStreaming || !state.providerConfigured) return;
         const mode = opts.mode || state.mode;
         const requestedAttachments = (opts.attachments || []).reduce(
             (items, attachment) => appendAttachment(items, attachment),
@@ -353,7 +354,7 @@ export function AIProvider({ children }) {
             loadConversations();
         }
     }, [
-        state.isStreaming, state.mode, state.includeContext, state.attachments,
+        state.isStreaming, state.providerConfigured, state.mode, state.includeContext, state.attachments,
         state.selectedConnection, state.selectedModel,
         buildPageContext, handleEvent, loadConversations,
     ]);

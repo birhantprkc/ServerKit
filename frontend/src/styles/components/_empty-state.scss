@@ -30,6 +30,7 @@
 
     // When nested inside a card, drop the card-in-card double background.
     .card &,
+    .settings-card &,
     .card-body & {
         background: transparent;
         border: none;

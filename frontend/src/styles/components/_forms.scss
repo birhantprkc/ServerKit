@@ -68,10 +68,25 @@ display: grid;
     }
 
     &__control {
-        // Ensure shadcn inputs, selects, textareas fill the width.
-        > * {
+        // Native controls and component controls share the same field contract.
+        // Exclude checkboxes/radios and buttons: their intrinsic size matters.
+        > input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="range"]):not([type="color"]):not(.ui-input),
+        > select,
+        > textarea:not(.ui-textarea) {
+            @include input-base();
+        }
+
+        > input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+        > select,
+        > textarea,
+        > .ui-select-trigger {
             width: 100%;
         }
+
+        > select { cursor: pointer; }
+
+        > input[type="checkbox"],
+        > input[type="radio"] { accent-color: $accent-primary; }
     }
 
     &__hint {
@@ -224,10 +239,18 @@ display: flex;
 
 .settings-form {
     margin-bottom: 0;
-    background: transparent;
-    border: none;
-    border-radius: 0;
-    padding: 0;
+    background: $bg-card;
+    border: 1px solid $border-default;
+    border-radius: $radius-lg;
+    padding: $space-5;
+
+    // Forms already inside a card inherit its surface and spacing.
+    .settings-card & {
+        background: transparent;
+        border: 0;
+        border-radius: 0;
+        padding: 0;
+    }
 
     .form-group {
         margin-bottom: $space-4;
@@ -248,7 +271,7 @@ display: flex;
             width: 100%;
             padding: $space-3;
             background: $bg-hover;
-            border: 1px solid $border-subtle;
+            border: 1px solid $border-default;
             border-radius: $radius-md;
             color: $text-primary;
             font-size: $font-size-sm;
