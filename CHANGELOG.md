@@ -24,6 +24,11 @@ Changes after 1.9.28 on the development branch.
 
 ### Fixed
 
+- Serve the runtime-extension vendor shims (`/serverkit-vendor/*.mjs`) as
+  `text/javascript` from the shipped nginx vhosts. Stock nginx has no `.mjs`
+  MIME entry and returned `application/octet-stream`, so every runtime-loaded
+  extension (WordPress, Git, Mail, Fail2ban, ...) failed with "Failed to fetch
+  dynamically imported module: blob:..." on fresh installs.
 - Evaluate fleet alert thresholds every minute and send opened/resolved alerts
   to administrators through the notification bus.
 - Preserve memory, disk and network measurements from agent heartbeats through
