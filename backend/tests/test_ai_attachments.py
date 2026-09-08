@@ -169,6 +169,7 @@ def test_chat_persists_manifest_and_reauthorizes_each_turn(
     ai_attachment_registry.register(
         'test.resource', resolver, plugin_slug='test', replace=True,
     )
+    monkeypatch.setattr(ai_service, 'is_enabled', lambda: True)
     monkeypatch.setattr(ai_service, 'is_configured', lambda: True)
     monkeypatch.setattr(ai_service, 'injection_flagged', lambda message: False)
     monkeypatch.setattr(ai_service, 'redact_input', lambda message: message)
@@ -217,6 +218,7 @@ def test_stream_emits_attachment_warnings(
         def ask_live(self, message):
             return iter(())
 
+    monkeypatch.setattr(ai_service, 'is_enabled', lambda: True)
     monkeypatch.setattr(ai_service, 'is_configured', lambda: True)
     monkeypatch.setattr(ai_service, 'injection_flagged', lambda message: False)
     monkeypatch.setattr(ai_service, 'redact_input', lambda message: message)
@@ -238,6 +240,7 @@ def test_stream_emits_attachment_warnings(
 
 
 def test_chat_rejects_malformed_attachment_manifest(client, auth_headers, monkeypatch):
+    monkeypatch.setattr(ai_service, 'is_enabled', lambda: True)
     monkeypatch.setattr(ai_service, 'is_configured', lambda: True)
     response = client.post('/api/v1/ai/chat', headers=auth_headers, json={
         'message': 'Hello',

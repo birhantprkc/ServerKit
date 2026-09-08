@@ -183,6 +183,15 @@ def update_settings():
     user = get_current_user()
     uid = user.id if user else None
 
+    if 'max_cost_usd' in data:
+        import math
+        try:
+            cost = float(data['max_cost_usd'])
+        except (TypeError, ValueError):
+            raise ValidationError('Cost limit must be a finite number of zero or more.')
+        if isinstance(data['max_cost_usd'], bool) or not math.isfinite(cost) or cost < 0:
+            raise ValidationError('Cost limit must be a finite number of zero or more.')
+
     field_map = {
         'enabled': ('ai_enabled', bool),
         'provider': ('ai_provider', str),
@@ -391,6 +400,8 @@ def delete_conversation(conversation_id):
 @ai_bp.route('/chat', methods=['POST'])
 @jwt_required()
 def chat():
+    if not ai_service.is_enabled():
+        return jsonify({'error': 'AI assistant is disabled. Enable it in Settings > AI Assistant.'}), 503
     ai_service.ensure_initialized()
     user = get_current_user()
     if not ai_service.is_configured():
@@ -433,6 +444,7 @@ def chat():
 def _run_chat(row, user, mode, page_context, attachment_refs, message, safe_message):
     attachment_result = resolve_attachments(user, attachment_refs)
     _persist_user_message(row, message, attachments=attachment_result['manifest'])
+    conv = None
     try:
         # gate=None: write tools refuse (no interactive confirmation in this mode).
         conv = ai_service.build_conversation(
@@ -443,6 +455,12 @@ def _run_chat(row, user, mode, page_context, attachment_refs, message, safe_mess
     except ai_service.AIProtectionError as exc:
         raise DependencyUnavailableError(str(exc)) from exc
     except Exception as exc:  # noqa: BLE001 - reported, not swallowed
+        budget_message = ai_service.budget_error_message(exc)
+        if budget_message:
+            if conv is not None:
+                ai_service.persist_conversation(row, conv, page_context=page_context)
+            return jsonify({'error': budget_message, 'code': 'ai_budget_exceeded',
+                            'conversation_id': row.id, 'usage': conv.usage if conv else {}}), 409
         return unexpected_response(exc)
 
     _persist_assistant_message(row, reply, tool_calls=[], usage=conv.usage)
@@ -461,6 +479,8 @@ def _run_chat(row, user, mode, page_context, attachment_refs, message, safe_mess
 @ai_bp.route('/chat/stream', methods=['POST'])
 @jwt_required()
 def chat_stream():
+    if not ai_service.is_enabled():
+        return jsonify({'error': 'AI assistant is disabled. Enable it in Settings > AI Assistant.'}), 503
     ai_service.ensure_initialized()
     user = get_current_user()
     if not ai_service.is_configured():
@@ -575,21 +595,28 @@ def chat_stream():
                             last_usage = payload['usage']
                     emit(name, payload)
             except Exception as exc:
-                logger.exception("AI stream worker failed")
-                emit('error', {'message': str(exc) if isinstance(exc, ai_service.AIProtectionError)
-                               else 'AI request failed. Please try again.'})
+                budget_message = ai_service.budget_error_message(exc)
+                if budget_message:
+                    emit('error', {'message': budget_message, 'code': 'ai_budget_exceeded'})
+                else:
+                    logger.exception("AI stream worker failed")
+                    emit('error', {'message': str(exc) if isinstance(exc, ai_service.AIProtectionError)
+                                   else 'AI request failed. Please try again.'})
             finally:
                 ai_service.unregister_gate(conversation_id, gate)
                 try:
                     text = ''.join(acc_text)
-                    if text or tool_order:
+                    if conv is not None:
+                        last_usage = conv.usage
+                    if text or tool_order or conv is not None:
                         conv_row = db.session.get(AiConversation, conversation_id)
                         if conv_row is not None:
-                            _persist_assistant_message(
-                                conv_row, text,
-                                tool_calls=[tool_calls[i] for i in tool_order if i in tool_calls],
-                                usage=last_usage,
-                            )
+                            if text or tool_order:
+                                _persist_assistant_message(
+                                    conv_row, text,
+                                    tool_calls=[tool_calls[i] for i in tool_order if i in tool_calls],
+                                    usage=last_usage,
+                                )
                             if conv is not None:
                                 ai_service.persist_conversation(conv_row, conv, page_context=page_context)
                 except Exception:

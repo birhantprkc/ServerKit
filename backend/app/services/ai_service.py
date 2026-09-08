@@ -300,6 +300,14 @@ class AIProtectionError(RuntimeError):
     """Enabled protection failed; never send the original data as a fallback."""
 
 
+def budget_error_message(exc: Exception) -> Optional[str]:
+    """Translate SDK budget stops without exposing provider exception details."""
+    from prompture.exceptions import BudgetExceededError
+    if isinstance(exc, BudgetExceededError):
+        return 'This conversation has reached its AI cost limit. An administrator can adjust the limit in AI Assistant settings.'
+    return None
+
+
 def _filter_secrets(text: str) -> str:
     """Deterministic credential filtering, independent of optional PII detection."""
     text = re.sub(r'-----BEGIN [^-]*PRIVATE KEY-----.*?-----END [^-]*PRIVATE KEY-----',
@@ -553,10 +561,12 @@ def build_conversation(row, user, mode: str, page_context: Optional[dict],
     # owned by Prompture. Reapply current policy instead of trusting export options.
     class ConfiguredConversation(Conversation):
         def __init__(self, **kwargs):
+            max_cost = _max_cost()
             kwargs.update(driver=driver, model_name=resolved_model,
                           max_tool_rounds=(6 if mode == 'assistant' else 0),
-                          max_tool_result_length=4000, max_cost=_max_cost(),
-                          budget_policy=None, fallback_models=None, options={})
+                          max_tool_result_length=4000, max_cost=max_cost,
+                          budget_policy='hard_stop' if max_cost is not None else None,
+                          fallback_models=None, options={})
             super().__init__(**kwargs)
 
     export = row.export
@@ -577,7 +587,7 @@ def build_conversation(row, user, mode: str, page_context: Optional[dict],
 
 
 def _max_cost() -> Optional[float]:
-    raw = _setting("ai_max_cost_usd", None)
+    raw = _setting("ai_max_cost_usd", 0.5)
     try:
         return float(raw) if raw not in (None, "", "0", 0) else None
     except (TypeError, ValueError):
