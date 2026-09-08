@@ -132,6 +132,9 @@ SECURITY_AND_CODE_AUDIT.md
 !/docs/screenshots/
 !/docs/screenshots/*.png
 
+# Video walkthrough thumbnails linked from the README.
+!/docs/videos/*.png
+
 # …and the hand-authored documentation diagrams (architecture) plus the locally
 # generated donation QR codes (funding). Both are referenced directly from
 # committed Markdown, so leaving them ignored publishes docs with broken images.

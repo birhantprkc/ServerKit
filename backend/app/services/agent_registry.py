@@ -21,7 +21,7 @@ from queue import Queue, Empty
 from collections import defaultdict
 
 from app import db
-from app.models.server import Server, ServerMetrics, ServerCommand, AgentSession
+from app.models.server import Server, ServerCommand, AgentSession
 
 # ---------------------------------------------------------------------------
 # Per-IP auth rate limiter — transport-neutral state shared by the WS
@@ -536,21 +536,22 @@ class AgentRegistry:
             db.session.rollback()
 
     def _store_metrics(self, server_id: str, metrics: dict):
-        """Store metrics from heartbeat"""
-        try:
-            metric = ServerMetrics(
-                server_id=server_id,
-                cpu_percent=metrics.get('cpu_percent'),
-                memory_percent=metrics.get('memory_percent'),
-                disk_percent=metrics.get('disk_percent'),
-                container_count=metrics.get('container_count'),
-                container_running=metrics.get('container_running'),
-            )
-            db.session.add(metric)
-            db.session.commit()
-        except Exception as e:
-            logger.exception("Error storing metrics")
-            db.session.rollback()
+        """Store metrics from a heartbeat, through the one writer.
+
+        This used to build its own ``ServerMetrics`` and set five of the
+        thirteen columns the model has, silently dropping ``memory_used``,
+        ``disk_used``, the network totals, both network *rates* and ``extra``.
+        The two rates are exactly what ``fleet_monitor_service.METRIC_COLUMNS``
+        reads, so a network threshold could never fire for a server whose
+        metrics arrive by agent heartbeat — the data to evaluate it was thrown
+        away on the way in.
+
+        One producer, one storage contract: ``ServerMetricsService`` already
+        persists every supported field and distinguishes a real ``0`` from
+        "no reading", so the heartbeat goes through it rather than beside it.
+        """
+        from app.services.server_metrics_service import ServerMetricsService
+        ServerMetricsService.record_metrics(server_id, metrics)
 
     # ==================== Command Routing ====================
 

@@ -332,6 +332,25 @@ Before submitting, test your changes:
 - [ ] No console errors or warnings
 - [ ] Tested on multiple browsers (for frontend)
 
+### Changelog and release notes
+
+For user-facing changes, add a short note to `CHANGELOG.md` under `Unreleased`.
+Use `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, or `Security`, with
+each category appearing only once per version. Explain the behavior users gain
+or the problem fixed; include upgrade actions for incompatible changes. Internal
+refactors and test-only changes do not normally need an entry.
+
+When preparing a stable release, move only the changes included in that release
+into a `## [X.Y.Z] - YYYY-MM-DD` section, newest first. Verify the version against
+the release tag and the date against its actual UTC publication date; do not
+invent dates for untagged development versions. Add the release link and a
+comparison with the previous published panel tag. Keep subsequent development
+work under `Unreleased` and update its comparison base. GitHub release notes
+should include that version's summary or link directly to its changelog section.
+
+Check the notes against the release's commit range before publishing. A version
+bump alone is not evidence that a release was published.
+
 ### Review Process
 
 1. Maintainers will review your PR

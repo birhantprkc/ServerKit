@@ -19,9 +19,9 @@ ni el coste de las plataformas gestionadas.
 [![Discord](https://img.shields.io/discord/1470639209059455008?style=for-the-badge&logo=discord&logoColor=white&label=Discord&color=5865F2)](https://discord.gg/ZKk6tkCQfG)
 [![Ver la demo](https://img.shields.io/badge/Ver_la_Demo-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://www.youtube.com/watch?v=nL9r3c9-5Kc)
 
-<a href="https://trendshift.io/repositories/21908?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-21908" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/21908/daily?language=JavaScript" alt="jhd3197/ServerKit | Trendshift" width="250" height="55"/></a>
+<a href="https://trendshift.io/repositories/21908?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-21908" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/21908/daily?language=JavaScript" alt="jhd3197/ServerKit | Trendshift" height="55" align="middle" /></a>
 <a href="https://www.uneed.best/tool/serverkit" target="_blank" rel="noopener noreferrer">
-  <img src="https://www.uneed.best/POTD3.png" style="width: 250px;" alt="Uneed POTD3 Badge" />
+  <img src="https://www.uneed.best/POTD3.png" height="55" align="middle" alt="Uneed POTD3 Badge" />
 </a>
 
 [![GitHub Stars](https://img.shields.io/github/stars/jhd3197/ServerKit?style=flat-square&color=f5c542)](https://github.com/jhd3197/ServerKit/stargazers)
@@ -36,9 +36,36 @@ ni el coste de las plataformas gestionadas.
 
 <br>
 
-[Inicio Rápido](#-inicio-rápido) · [Capturas](#-capturas-de-pantalla) · [Funcionalidades](#-funcionalidades) · [Arquitectura](#-arquitectura) · [Hoja de Ruta](#-hoja-de-ruta) · [Documentación](#-documentación) · [Contribuir](#-contribuir) · [Discord](#-comunidad)
+[Inicio Rápido](#-inicio-rápido) · [Guía en video](#guía-en-video) · [Capturas](#-capturas-de-pantalla) · [Funcionalidades](#-funcionalidades) · [Arquitectura](#-arquitectura) · [Hoja de Ruta](#-hoja-de-ruta) · [Documentación](#-documentación) · [Contribuir](#-contribuir) · [Discord](#-comunidad)
 
 </div>
+
+---
+
+## Guía en video
+
+Elige una plantilla o usa tu propio código. Mira ambas formas de desplegar en YouTube.
+
+<table>
+  <tr>
+    <th width="50%">De una plantilla a una app en funcionamiento</th>
+    <th width="50%">Cualquier repositorio Git en 3 pasos</th>
+  </tr>
+  <tr>
+    <td valign="top">
+      <a href="https://youtu.be/TXfXFz6bVjs"><img src="videos/template-to-live-app.png" width="100%" alt="De una plantilla a una app en funcionamiento" /></a>
+      <p>Despliega AgentSite desde el catálogo de plantillas, comprueba la capacidad y sigue la compilación en directo.</p>
+      <p><strong><a href="https://youtu.be/TXfXFz6bVjs">▶ Ver en YouTube · 4:16</a></strong></p>
+      <p><a href="https://www.youtube.com/watch?v=TXfXFz6bVjs&amp;t=27s">Catálogo</a> · <a href="https://www.youtube.com/watch?v=TXfXFz6bVjs&amp;t=71s">Panel de despliegue</a> · <a href="https://www.youtube.com/watch?v=TXfXFz6bVjs&amp;t=123s">Capacidad</a> · <a href="https://www.youtube.com/watch?v=TXfXFz6bVjs&amp;t=151s">Compilación en directo</a></p>
+    </td>
+    <td valign="top">
+      <a href="https://youtu.be/Fv28qMERYDU"><img src="videos/deploy-git-repo.png" width="100%" alt="Cualquier repositorio Git en 3 pasos" /></a>
+      <p>Conecta un repositorio Git, revisa la configuración detectada y despliega con el asistente de nuevo servicio.</p>
+      <p><strong><a href="https://youtu.be/Fv28qMERYDU">▶ Ver en YouTube · 3:45</a></strong></p>
+      <p><a href="https://www.youtube.com/watch?v=Fv28qMERYDU&amp;t=25s">Fuentes</a> · <a href="https://www.youtube.com/watch?v=Fv28qMERYDU&amp;t=70s">Conectar repositorio</a> · <a href="https://www.youtube.com/watch?v=Fv28qMERYDU&amp;t=117s">Revisar configuración</a> · <a href="https://www.youtube.com/watch?v=Fv28qMERYDU&amp;t=160s">Despliegue automático</a></p>
+    </td>
+  </tr>
+</table>
 
 ---
 

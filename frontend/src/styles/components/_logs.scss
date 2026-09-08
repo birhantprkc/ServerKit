@@ -175,6 +175,12 @@
         &--debug {
             .logs-viewer__line-text { color: var(--text-faint); }
         }
+
+        &--structured {
+            align-items: flex-start;
+            padding-block: $space-2;
+            border-bottom: 1px solid var(--border-soft);
+        }
     }
 
     &__line-num {
@@ -188,9 +194,27 @@
 
     &__line-text {
         flex: 1;
+        min-width: 0;
         color: var(--text-code);
         white-space: pre-wrap;
         word-break: break-all;
+    }
+
+    &__timestamp {
+        display: block;
+        margin-bottom: $space-1;
+        color: var(--text-faint);
+        font-size: 11px;
+    }
+
+    &__json {
+        margin: 0;
+        color: inherit;
+        font: inherit;
+        line-height: 1.55;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        word-break: normal;
     }
 
     &__highlight {

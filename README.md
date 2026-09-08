@@ -19,9 +19,9 @@ English | [Español](docs/README.es.md) | [中文版](docs/README.zh-CN.md) | [P
 [![Discord](https://img.shields.io/discord/1470639209059455008?style=for-the-badge&logo=discord&logoColor=white&label=Discord&color=5865F2)](https://discord.gg/ZKk6tkCQfG)
 [![Watch the demo](https://img.shields.io/badge/Watch_the_Demo-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://www.youtube.com/watch?v=nL9r3c9-5Kc)
 
-<a href="https://trendshift.io/repositories/21908?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-21908" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/21908/daily?language=JavaScript" alt="jhd3197/ServerKit | Trendshift" width="250" height="55"/></a>
+<a href="https://trendshift.io/repositories/21908?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-21908" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/21908/daily?language=JavaScript" alt="jhd3197/ServerKit | Trendshift" height="55" align="middle" /></a>
 <a href="https://www.uneed.best/tool/serverkit" target="_blank" rel="noopener noreferrer">
-  <img src="https://www.uneed.best/POTD3.png" style="width: 250px;" alt="Uneed POTD3 Badge" />
+  <img src="https://www.uneed.best/POTD3.png" height="55" align="middle" alt="Uneed POTD3 Badge" />
 </a>
 
 [![GitHub Stars](https://img.shields.io/github/stars/jhd3197/ServerKit?style=flat-square&color=f5c542)](https://github.com/jhd3197/ServerKit/stargazers)
@@ -36,9 +36,36 @@ English | [Español](docs/README.es.md) | [中文版](docs/README.zh-CN.md) | [P
 
 <br>
 
-[Quick Start](#-quick-start) · [Screenshots](#-screenshots) · [Features](#-features) · [Architecture](#-architecture) · [Roadmap](#-roadmap) · [Docs](#-documentation) · [Contributing](#-contributing) · [Discord](#-community)
+[Quick Start](#-quick-start) · [Video walkthrough](#video-walkthrough) · [Screenshots](#-screenshots) · [Features](#-features) · [Architecture](#-architecture) · [Roadmap](#-roadmap) · [Changelog](CHANGELOG.md) · [Docs](#-documentation) · [Contributing](#-contributing) · [Discord](#-community)
 
 </div>
+
+---
+
+## Video walkthrough
+
+Choose a template or bring your own code. Watch both deployment paths on YouTube.
+
+<table>
+  <tr>
+    <th width="50%">Template to live app</th>
+    <th width="50%">Any Git repo in 3 steps</th>
+  </tr>
+  <tr>
+    <td valign="top">
+      <a href="https://youtu.be/TXfXFz6bVjs"><img src="docs/videos/template-to-live-app.png" width="100%" alt="Template to live app" /></a>
+      <p>Deploy AgentSite from the template catalog, check capacity and follow the live build.</p>
+      <p><strong><a href="https://youtu.be/TXfXFz6bVjs">▶ Watch on YouTube · 4:16</a></strong></p>
+      <p><a href="https://www.youtube.com/watch?v=TXfXFz6bVjs&amp;t=27s">Template catalog</a> · <a href="https://www.youtube.com/watch?v=TXfXFz6bVjs&amp;t=71s">Deploy drawer</a> · <a href="https://www.youtube.com/watch?v=TXfXFz6bVjs&amp;t=123s">Capacity check</a> · <a href="https://www.youtube.com/watch?v=TXfXFz6bVjs&amp;t=151s">Live build</a></p>
+    </td>
+    <td valign="top">
+      <a href="https://youtu.be/Fv28qMERYDU"><img src="docs/videos/deploy-git-repo.png" width="100%" alt="Any Git repo in 3 steps" /></a>
+      <p>Connect a Git repository, review the detected settings and deploy with the New Service wizard.</p>
+      <p><strong><a href="https://youtu.be/Fv28qMERYDU">▶ Watch on YouTube · 3:45</a></strong></p>
+      <p><a href="https://www.youtube.com/watch?v=Fv28qMERYDU&amp;t=25s">Sources</a> · <a href="https://www.youtube.com/watch?v=Fv28qMERYDU&amp;t=70s">Connect repository</a> · <a href="https://www.youtube.com/watch?v=Fv28qMERYDU&amp;t=117s">Review settings</a> · <a href="https://www.youtube.com/watch?v=Fv28qMERYDU&amp;t=160s">Auto-deploy</a></p>
+    </td>
+  </tr>
+</table>
 
 ---
 

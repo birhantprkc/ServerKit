@@ -159,10 +159,34 @@ class FleetMonitorService:
 
     @staticmethod
     def check_fleet_thresholds():
-        """Check all online servers against their thresholds. Call periodically."""
+        """Check all online servers against their thresholds.
+
+        Returns what changed on this pass:
+
+            {'opened': [...], 'resolved': [...], 'superseded': [...],
+             'servers': int, 'evaluated': int}
+
+        so the caller can notify about it. Evaluating a breach and telling
+        nobody is most of the way to no monitoring at all; before this the
+        method also had no caller anywhere in the backend, so neither happened.
+        The schedule lives in ``app/jobs/builtin_handlers.py`` with every other
+        recurring task, and the notification goes through the Notification Bus.
+
+        ``resolved`` is recovery — the metric came back under its threshold.
+        ``superseded`` is a row closed because the *severity changed*, which is
+        a different event wearing the same status: a warning replaced by a
+        critical is an escalation, and announcing it as "recovered" would be
+        the opposite of what happened.
+        """
+        opened = []
+        resolved = []
+        superseded = []
+        evaluated = 0
+
         thresholds = ServerAlertThreshold.query.filter_by(enabled=True).all()
         if not thresholds:
-            return
+            return {'opened': [], 'resolved': [], 'superseded': [],
+                    'servers': 0, 'evaluated': 0}
 
         # Group thresholds: per-server overrides + global defaults
         global_thresholds = {}
@@ -192,12 +216,16 @@ class FleetMonitorService:
                 ).all()
 
                 if not recent:
+                    # No samples in the window. That is "we do not know", not
+                    # "it is fine": an existing alert stays open rather than
+                    # being resolved by a server that stopped reporting.
                     continue
 
                 values = [getattr(r, col_name) for r in recent if getattr(r, col_name) is not None]
                 if not values:
                     continue
 
+                evaluated += 1
                 avg_val = sum(values) / len(values)
 
                 # Check if there's already an active alert for this server+metric
@@ -210,6 +238,7 @@ class FleetMonitorService:
                         if existing:
                             existing.resolved_at = datetime.utcnow()
                             existing.status = 'resolved'
+                            superseded.append(existing)
                         alert = MetricAlert(
                             server_id=server.id,
                             metric=metric_name,
@@ -219,11 +248,13 @@ class FleetMonitorService:
                             duration_seconds=threshold.duration_seconds
                         )
                         db.session.add(alert)
+                        opened.append(alert)
                 elif avg_val >= threshold.warning_threshold:
                     if not existing or existing.severity == 'critical':
                         if existing and existing.severity == 'critical':
                             existing.resolved_at = datetime.utcnow()
                             existing.status = 'resolved'
+                            superseded.append(existing)
                         if not existing or existing.severity == 'critical':
                             alert = MetricAlert(
                                 server_id=server.id,
@@ -234,17 +265,24 @@ class FleetMonitorService:
                                 duration_seconds=threshold.duration_seconds
                             )
                             db.session.add(alert)
+                            opened.append(alert)
                 else:
                     # Below thresholds - resolve any active alert
                     if existing:
                         existing.resolved_at = datetime.utcnow()
                         existing.status = 'resolved'
+                        resolved.append(existing)
 
         try:
             db.session.commit()
         except Exception as e:
             logger.error(f"Error checking fleet thresholds: {e}")
             db.session.rollback()
+            return {'opened': [], 'resolved': [], 'superseded': [],
+                    'servers': len(servers), 'evaluated': evaluated}
+
+        return {'opened': opened, 'resolved': resolved, 'superseded': superseded,
+                'servers': len(servers), 'evaluated': evaluated}
 
     @staticmethod
     def get_alerts(

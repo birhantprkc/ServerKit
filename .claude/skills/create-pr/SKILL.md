@@ -1,128 +1,186 @@
 ---
 name: create-pr
-description: Generate a pull request title and description from the current branch's commits. Produces a concise summary, optional feature highlights, and collapsible technical details.
+description: Draft or revise a local ServerKit pull request title and description from the branch diff. Use for PR descriptions and dev-to-main promotion notes; keep issue replies, advisories, and marketing copy in their own formats.
 ---
 
 # Create PR Description
 
-Generate a pull request title and description that's scannable, informative, and has just enough personality to feel human.
+Write for a reviewer who has not seen the conversation. Explain the problem,
+the resulting behavior, and the evidence needed to assess the change. Save a
+local Markdown draft; creating or updating a GitHub PR is a separate action.
 
-## Instructions
+## Establish the comparison
 
-### 1. Gather context (do ALL of these)
-
-Run these commands to build a complete picture before writing anything:
+Read the repository instructions and any PR template. Inspect the branch,
+working-tree status, and available refs before selecting a base:
 
 ```bash
-# Commit overview
-git log main..HEAD --oneline --stat
-
-# Full diff stat for file-level scope
-git diff main..HEAD --stat
-
-# Actual code changes — read the diff, don't just skim filenames
-git diff main..HEAD
+git status --short
+git branch --show-current
+git branch -a
 ```
 
-If the full diff is too large, diff individual areas (backend routes, frontend, storage, etc.) in batches. You must understand **what the code actually does**, not just which files were touched.
+Use the user's specified base or the existing PR's base when available. For
+ServerKit's normal workflow, feature branches target `dev`; `dev` promotions
+target `main`. Check `.github/workflows/main-promotion.yml` if the requested
+target conflicts with that flow. Explain the conflict without changing the
+branch or silently choosing a different target. Ask only if the intended
+comparison cannot be resolved from the request and repository context.
 
-### 2. Write the PR file
+Resolve the base to an available ref, preferring the intended remote-tracking
+ref when present. Record the exact base and HEAD commit IDs used. Local refs
+can be stale; do not describe them as current remote state without checking.
 
-Write the file to `.pr/YYYY-MM-DD.md` (using today's date). Create the `.pr/` directory if it doesn't exist. If a file for today's date already exists, append a counter: `YYYY-MM-DD-2.md`, `YYYY-MM-DD-3.md`, etc.
+With `BASE_REF` replaced by that resolved ref, inspect:
 
-The structure depends on whether the PR introduces user-facing features or is purely internal (refactors, bug fixes, infra).
+```bash
+git log BASE_REF..HEAD --oneline
+git diff BASE_REF...HEAD --stat
+git diff BASE_REF...HEAD
+git log BASE_REF..HEAD --format='%aN <%aE>'
+```
 
-#### When the PR has user-facing features:
+The three-dot diff compares HEAD to the merge base, so base-only changes do
+not enter the description. Read large diffs by area, including relevant
+callers when needed to understand behavior. Use commits for context and
+authorship; describe the final diff, including fixes made during review.
 
-~~~markdown
-# <Title>
+Uncommitted edits do not belong to the branch comparison unless the user asks
+to include them. If included, inspect staged and unstaged diffs and identify
+that scope in the handoff. If the comparison is empty or refs are missing,
+report that instead of inventing a PR. Do not change code or run a broad audit
+as a prerequisite to writing the description.
 
-<4-6 sentence summary>
+## Choose the amount of detail
 
-### Highlights
+The visible body stays short no matter how large the branch is. A reviewer
+reads it before deciding to expand anything, so it carries the problem, the
+resulting behavior, and what they must act on — not the implementation.
 
-- Highlight 1
-- Highlight 2
-- ...
+- A small fix usually needs a title, one short paragraph, and relevant
+  validation. Two sentences can be enough. Do not pad it to a sentence quota,
+  and do not add an accordion it does not need.
+- Anything larger keeps the same shape: two or three short paragraphs, then
+  `### Contributors` when others authored commits, `### Highlights` as
+  user-facing outcomes, short `### Upgrade notes` and `### Validation`, then
+  everything else inside `<details><summary>Technical changes</summary>`.
+  Skip Highlights if it would repeat the paragraphs.
+- Aim for roughly 400 words before the accordion. A large promotion does not
+  earn a longer body; it earns a longer appendix.
 
-<details>
-<summary>Technical changes</summary>
+Inside the accordion, group bullets under bold subsystem labels. Cover material
+changes and risks, but group mechanical edits instead of writing a file-by-file
+inventory; link an existing detailed review or plan when it helps. Put blank
+lines around Markdown inside it. Do not promote implementation detail into the
+body, and do not give the body its own `##` sections per subsystem — that is
+what the accordion is for. Keep upgrade actions, breaking changes, security
+limitations, and validation visible outside it. Omit empty sections and
+template placeholders. Do not invent a shared story for unrelated changes.
 
-- Detail 1
-- Detail 2
-- ...
+## Write the description
 
-</details>
-~~~
+**Title.** Start the file with `# <Title>`. Use a plain sentence-case title that
+names the main behavior, preferably under 70 characters, with no trailing
+period. Preserve the project's preference for no `feat:`, `fix:`,
+`type(scope):`, or square-bracket tags. A subsystem label is fine when useful.
+This heading supplies the eventual PR title; the remaining content is the body.
 
-#### When the PR is purely internal (no user-facing features):
+**Opening.** Lead with the concrete problem and what changes. For a bug, name
+the trigger and the before/after behavior. For a feature, say what the user can
+now do. Explain a design choice when its reason matters to review and is
+supported by the diff or recorded context. Do not invent motives or rejected
+alternatives. Move protocol timings and long identifier lists into details.
 
-~~~markdown
-# <Title>
+**Voice.** Use direct, conversational prose. Do not manufacture personality
+with a joke, metaphor, apology, or dramatic reveal. Cut stock openers such as
+"This is the big one," "Turns out," "Three gremlins," and "This PR builds the
+bridge." Replace praise such as "real," "proper," "honest," "seamless," or
+"robust" with the behavior that earns it. Avoid repeated "one door" or
+"same story" framing, "not X, but Y" slogans, and "riding along" transitions.
+Keep a technical contrast when it explains an actual compatibility boundary
+or tradeoff. Technical qualifiers and terms such as "read-only" or "atomic"
+are useful when precise; this is an editorial pass, not a word blacklist.
 
-<4-6 sentence summary>
+**Evidence and limits.** Tie factual claims to the inspected diff, supplied
+evidence, or an identified check. Keep distinctions between implemented,
+verified, and expected behavior. "Reject pending-MFA tokens on login-link
+routes" is more precise than "2FA can no longer be bypassed." Describe the
+covered platforms and paths instead of promising future compatibility or
+claiming a bug cannot recur. Date measurements and state what they measure;
+file counts and line reductions usually belong out of the summary. Do not
+infer performance gains from fewer queries or smaller source files alone.
 
-<details>
-<summary>Technical changes</summary>
+**Validation.** Include concise, relevant results when available, even for
+internal changes. Name what was checked and any material gap. Added tests or
+CI configuration are changes, not proof that checks passed. Do not invent
+results, imply a historical run covered the current HEAD, or rerun expensive
+suites just to fill this section. If no execution evidence is available, say
+that validation was not run or results were not available, as applicable.
 
-- Detail 1
-- Detail 2
-- ...
+**Upgrade and security notes.** Make required migrations, session invalidation,
+new permission requirements, data-retention changes, and remaining limitations
+easy to find. Preserve the distinction between JWT-only and API-key-capable
+routes; an authentication decorator change can expand access. State the
+specific boundary and any known exception. Do not turn a security fix into
+a blanket assurance about the product.
 
-</details>
-~~~
+**Contributors.** For multi-author work, credit contributors other than the
+repo owner in a short section. Exclude bots and consolidate known aliases.
+Use a verified GitHub handle when available, otherwise the author's name;
+do not guess handles from email addresses or expose their email addresses.
+Keep contribution notes tied to the commits or supplied attribution.
 
-Omit the Highlights section entirely for internal-only PRs — don't force it.
+No emoji, generated-by footer, or commentary about making the draft sound human.
 
-### Style Rules
+## Examples
 
-#### Title
-- **Write a normal, human title — NOT a conventional-commit prefix.** Name the PR the way you'd describe it to a teammate. **No `type(scope):`, no `feat:` / `fix:` / `chore:` lead-in, no square-bracket tags** in the title.
-  - Good: `Add the Cloudflare DNS provisioning extension` · `Harden the subprocess audit against injection`
-  - Bad: `feat(dns): add cloudflare provisioning` · `fix: subprocess injection` · `chore(deps): bump`
-- Capitalize the first word like a sentence; imperative or plain-descriptive are both fine; no trailing period. Keep it under ~70 chars.
-- Leading with the subsystem and a colon in plain words is fine when it aids scanning: `Backend: …`, `Extensions: …`.
-- The `# <Title>` line at the top of the generated file **is** the PR title — when the PR is eventually opened, that same string is the `gh pr create --title` value. Don't write a second, different headline.
-- **Where the release weight actually lives (so you can safely keep it out of the title):** `version-bump.yml` reads the *commit message* pushed to `dev` (`github.event.head_commit.message`), **not this title.** A `feat:`/`feature:`/`minor:` prefix or a `[minor]` tag in the commit → minor bump; `BREAKING:`/`major:` or `[major]` → major; anything else → patch. Put any bump intent in your **commits**; leave the PR title human.
+These edits illustrate scope and tone using the local archive. They do not
+establish fresh validation of those historical changes.
 
-#### Summary
-- **4-6 sentences.** This is the part people actually read — give it room to breathe.
-- **Open with a touch of personality.** One line that makes the reader smile — a wry observation, a lighthearted remark, a playful metaphor. Not forced, just human. Examples of the energy (don't copy these literally, invent your own each time):
-  - "This one's mostly about cleaning house."
-  - "Turns out the type checker was right to complain."
-  - A playful metaphor about what the code was doing wrong
-  - A wry observation about the state of things before this PR
-- **Match the tone to the change.** The voice should fit what the PR actually is — a bug fix can read dry and a little relieved ("This should've been caught months ago."), a new feature can read genuinely excited, a refactor can read like satisfying cleanup, a security fix should stay sober and matter-of-fact. Don't paste the same energy onto every PR; that's just a different kind of static.
-- **Then explain what was going on and what this PR does about it.** Set the scene — what was broken, missing, or annoying? What's the approach? Name the main change areas (new feature, refactor target, bug fixed) but describe them in context, not as a dry list. The reader should walk away understanding the *story* of this PR, not just a changelog.
-- **Include the "why" and the reasoning.** If there was a design choice, a trade-off, or a particular reason you went one way instead of another, mention it briefly. "We went with X instead of Y because Z" is the kind of thing that saves people from asking in review.
-- **Do not repeat what Highlights or Technical changes already cover** verbatim, but it's fine to reference the same areas — the summary gives narrative context, the sections below give specifics.
+**Small change** (`.pr/2026-08-21-6.md`):
 
-#### Highlights (only when applicable)
-- One bullet per user-facing feature, behavior change, or notable improvement.
-- Write from the user's perspective — what they'll notice, not internal implementation.
-- Plain language, no code references. "Schedules now respect your configured timezone" not "`SchedulerService` gains a `timezone` attribute".
-- 3-7 bullets is the sweet spot. If you can only think of 1-2, fold them into the summary and skip this section.
+```markdown
+# Consolidate the shared error state
 
-#### Technical changes (inside the accordion)
-- One bullet per discrete change. Be specific — name files, classes, functions, patterns.
-- Format: `backtick code references` for identifiers, plain text for descriptions.
-- Every meaningful change in the diff must have a bullet. If a change touches security (CORS, auth, SQL injection), error handling, accessibility, or concurrency, it gets its own bullet — do not bury these.
-- Bullets should describe the mechanism, not just the intent. "Race condition in `get_or_create_chat` fixed by moving creation inside the lookup session" is good. "Fix database issues" is not.
-- Group related changes together (all typing fixes, all security hardening, all API changes, etc.)
+`ErrorBoundary` now renders the shared `ErrorState` component. The extension
+SDK exports the same component, preserving the boundary's reporting, retry,
+and route-reset behavior.
+```
 
-#### Contributors
-- If the PR includes commits from multiple authors (not just the repo owner), add a **Contributors** section after the summary and before Highlights.
-- Use `git log main..HEAD --format='%aN <%aE>' | sort -u` to find unique commit authors.
-- Exclude bot accounts (e.g., `github-actions[bot]`).
-- Format: `@username` if their GitHub handle is available (check the ARGUMENTS or commit metadata), otherwise use their name. Add a brief note about what they contributed if it's clear from the commits.
-- Keep it short — one line per contributor, no need for a full changelog.
+Add actual validation evidence or an accurate statement that it is unavailable.
+This change does not need Highlights and a technical accordion.
 
-#### General
-- **No test plan section.** Do not include "Test plan" or "Testing".
-- **No mention of tests.** Do not reference test files, test results, or testing.
-- **No emoji.**
-- **No "Generated by" footer.**
+**Bounded security claim** (`.pr/2026-09-05.md`): replace "Two-factor
+authentication can no longer be stepped around" with "Pending-2FA tokens expire
+after five minutes and cannot administer login links. Redeeming a link requires
+the target account's TOTP step when enabled."
 
-### 3. Stop after writing the file
+**Direct explanation** (`.pr/2026-08-21-7.md`): replace "The one design call
+worth flagging" and its long setup with "Resource pickers use an extended mode
+of `/search` to share the command palette's authorization checks. Pickers opt
+into cursor paging; the palette keeps its five-results-per-type limit."
 
-This skill's job ends when the `.pr/` file is written. **Do not** run `gh pr create`, `git push`, or any other remote-affecting command to actually open the PR — that's a separate, explicit step the user requests on its own. Print the path of the file you wrote and a one-line note that it's ready to review/copy.
+## Save and review
+
+For a new draft, create `.pr/` if needed and write `.pr/YYYY-MM-DD.md` using the
+current local date. If it exists, use the next available suffix (`-2`, `-3`,
+...). When asked to revise
+an existing draft, update that file instead of generating another dated copy.
+Do not rewrite other historical drafts unless requested.
+
+Read the finished draft against the final diff. Remove repeated explanations,
+unnecessary setup, and claims stronger than the evidence. Check that required
+upgrade actions remain visible and that links, paths, credit, and validation
+match the chosen scope. Do not copy changing counts or release status from
+an older `.pr` file without checking them.
+
+Release behavior belongs to the workflows. If bump intent matters, inspect
+`.github/workflows/version-bump.yml`; it reads the commit message pushed to
+`dev`. A PR title can become that message through a squash or merge workflow,
+so do not promise the title can never affect versioning. Drafting a description
+does not authorize changing commit messages or `VERSION`.
+
+Return the draft's path and a brief handoff identifying the comparison used
+and any material evidence gap. Stop at the local draft unless the user has
+also authorized publishing or updating the PR. Honor that authorization when
+present; otherwise do not push, open/edit a remote PR, or post comments.

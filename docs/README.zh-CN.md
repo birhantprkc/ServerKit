@@ -19,9 +19,9 @@ Docker 容器和安全策略——无需 Kubernetes 的复杂性，
 [![Discord](https://img.shields.io/discord/1470639209059455008?style=for-the-badge&logo=discord&logoColor=white&label=Discord&color=5865F2)](https://discord.gg/ZKk6tkCQfG)
 [![观看演示](https://img.shields.io/badge/%E8%A7%82%E7%9C%8B%E6%BC%94%E7%A4%BA-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://www.youtube.com/watch?v=nL9r3c9-5Kc)
 
-<a href="https://trendshift.io/repositories/21908?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-21908" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/21908/daily?language=JavaScript" alt="jhd3197/ServerKit | Trendshift" width="250" height="55"/></a>
+<a href="https://trendshift.io/repositories/21908?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-21908" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/21908/daily?language=JavaScript" alt="jhd3197/ServerKit | Trendshift" height="55" align="middle" /></a>
 <a href="https://www.uneed.best/tool/serverkit" target="_blank" rel="noopener noreferrer">
-  <img src="https://www.uneed.best/POTD3.png" style="width: 250px;" alt="Uneed POTD3 Badge" />
+  <img src="https://www.uneed.best/POTD3.png" height="55" align="middle" alt="Uneed POTD3 Badge" />
 </a>
 
 [![GitHub Stars](https://img.shields.io/github/stars/jhd3197/ServerKit?style=flat-square&color=f5c542)](https://github.com/jhd3197/ServerKit/stargazers)
@@ -36,9 +36,36 @@ Docker 容器和安全策略——无需 Kubernetes 的复杂性，
 
 <br>
 
-[快速开始](#-快速开始) · [截图预览](#-截图预览) · [功能特性](#-功能特性) · [系统架构](#-系统架构) · [路线图](#-路线图) · [文档](#-文档) · [参与贡献](#-参与贡献) · [Discord](#-社区)
+[快速开始](#-快速开始) · [视频教程](#视频教程) · [截图预览](#-截图预览) · [功能特性](#-功能特性) · [系统架构](#-系统架构) · [路线图](#-路线图) · [文档](#-文档) · [参与贡献](#-参与贡献) · [Discord](#-社区)
 
 </div>
+
+---
+
+## 视频教程
+
+选择模板或使用自己的代码，在 YouTube 上观看两种部署方式。
+
+<table>
+  <tr>
+    <th width="50%">从模板到应用上线</th>
+    <th width="50%">3 步部署 Git 仓库</th>
+  </tr>
+  <tr>
+    <td valign="top">
+      <a href="https://youtu.be/TXfXFz6bVjs"><img src="videos/template-to-live-app.png" width="100%" alt="从模板到应用上线" /></a>
+      <p>从模板目录部署 AgentSite，检查可用资源并实时查看构建过程。</p>
+      <p><strong><a href="https://youtu.be/TXfXFz6bVjs">▶ 在 YouTube 上观看 · 4:16</a></strong></p>
+      <p><a href="https://www.youtube.com/watch?v=TXfXFz6bVjs&amp;t=27s">模板目录</a> · <a href="https://www.youtube.com/watch?v=TXfXFz6bVjs&amp;t=71s">部署面板</a> · <a href="https://www.youtube.com/watch?v=TXfXFz6bVjs&amp;t=123s">资源检查</a> · <a href="https://www.youtube.com/watch?v=TXfXFz6bVjs&amp;t=151s">实时构建</a></p>
+    </td>
+    <td valign="top">
+      <a href="https://youtu.be/Fv28qMERYDU"><img src="videos/deploy-git-repo.png" width="100%" alt="3 步部署 Git 仓库" /></a>
+      <p>连接 Git 仓库，检查自动识别的配置，然后使用新建服务向导完成部署。</p>
+      <p><strong><a href="https://youtu.be/Fv28qMERYDU">▶ 在 YouTube 上观看 · 3:45</a></strong></p>
+      <p><a href="https://www.youtube.com/watch?v=Fv28qMERYDU&amp;t=25s">代码来源</a> · <a href="https://www.youtube.com/watch?v=Fv28qMERYDU&amp;t=70s">连接仓库</a> · <a href="https://www.youtube.com/watch?v=Fv28qMERYDU&amp;t=117s">检查配置</a> · <a href="https://www.youtube.com/watch?v=Fv28qMERYDU&amp;t=160s">自动部署</a></p>
+    </td>
+  </tr>
+</table>
 
 ---
 

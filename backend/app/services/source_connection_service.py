@@ -618,8 +618,12 @@ class SourceConnectionService:
         state = secrets.token_urlsafe(32)
         session['source_bitbucket_state'] = state
 
+        # redirect_uri is what complete_bitbucket_callback posts to the token
+        # endpoint, so the authorize hop has to ask for the same one — the
+        # GitHub and GitLab generators above both send it.
         params = {
             'client_id': config['client_id'],
+            'redirect_uri': redirect_uri,
             'response_type': 'code',
             'state': state,
         }

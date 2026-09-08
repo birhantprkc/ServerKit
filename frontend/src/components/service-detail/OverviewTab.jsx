@@ -11,6 +11,7 @@ import ScheduledTasksCard from '../ScheduledTasksCard';
 import { KpiBand, MetricCard, Pill, Gauge, EnvTag, statusKind } from '@/components/ds';
 import { usePolling } from '@/hooks/usePolling';
 import { useTranslation } from 'react-i18next';
+import { normalizeContainerStats, resolveAppContainerId } from '@/utils/containerMetrics';
 
 // Live metrics cadence.
 const METRICS_REFRESH_MS = 10000;
@@ -34,42 +35,30 @@ const OverviewTab = ({ app, deployConfig }) => {
 
     const isDocker = app.app_type === 'docker';
     const isPython = ['flask', 'django'].includes(app.app_type);
+    const { id: appId, name: appName, container_id: containerId } = app;
 
     // Load on mount and whenever the app changes; poll on top of that.
     const loadMetrics = useCallback(async () => {
         try {
             if (isDocker) {
                 const data = await api.getContainers(true);
-                // The API normalises `docker ps` into lowercase keys and does
-                // not expose Labels at all, so matching on `Names[]` and the
-                // compose-project label found nothing — Resource Usage came up
-                // empty for every Docker service. The project can still be
-                // matched through the container name it produces
-                // (project-service-N).
-                const needle = (app.name || '').toLowerCase();
-                const appContainers = (data.containers || []).filter((c) => {
-                    const raw = c.name ?? c.Names ?? '';
-                    const text = Array.isArray(raw) ? raw.join(',') : String(raw);
-                    return needle && text.toLowerCase().includes(needle);
-                });
-                if (appContainers.length > 0) {
-                    const statsRes = await api.getContainerStats(
-                        appContainers[0].id ?? appContainers[0].Id);
-                    // The route answers {stats: {...}} with docker's own
-                    // CLI keys (CPUPerc, MemUsage, ...). Reading the top
-                    // level found nothing, so CPU and memory always showed
-                    // 0.0% and the rest N/A on a perfectly healthy container.
-                    const containerStats = statsRes?.stats ?? statsRes ?? {};
+                const runtimeId = resolveAppContainerId(
+                    { id: appId, name: appName, container_id: containerId }, data.containers || []
+                );
+                if (runtimeId) {
+                    const containerStats = normalizeContainerStats(
+                        await api.getContainerStats(runtimeId)
+                    );
                     setMetrics({
-                        cpu: parseFloat(containerStats.cpu_percent || containerStats.CPUPerc || 0),
-                        memory: parseFloat(containerStats.memory_percent || containerStats.MemPerc || 0),
-                        memUsage: containerStats.memory_usage || containerStats.MemUsage || 'N/A',
-                        netIO: containerStats.net_io || containerStats.NetIO || 'N/A',
-                        pids: containerStats.pids || containerStats.PIDs || 'N/A',
+                        cpu: containerStats.cpuPercent,
+                        memory: containerStats.memoryPercent,
+                        memUsage: containerStats.memoryUsage,
+                        netIO: containerStats.networkIO,
+                        pids: containerStats.pids,
                     });
                 }
             } else if (isPython) {
-                const data = await api.getPythonAppStatus(app.id);
+                const data = await api.getPythonAppStatus(appId);
                 setMetrics({
                     active: data.active,
                     pid: data.pid,
@@ -83,7 +72,7 @@ const OverviewTab = ({ app, deployConfig }) => {
         } finally {
             setMetricsLoading(false);
         }
-    }, [app.id, app.name, isDocker, isPython]);
+    }, [appId, appName, containerId, isDocker, isPython]);
 
     useEffect(() => { loadMetrics(); }, [loadMetrics]);
     usePolling(loadMetrics, METRICS_REFRESH_MS, { immediate: false });
