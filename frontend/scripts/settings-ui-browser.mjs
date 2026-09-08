@@ -215,8 +215,11 @@ try {
             }
             if (pane === 'notifications') {
                 await page.getByRole('button', { name: 'Save Preferences' }).waitFor();
-                const actions = await page.locator('.settings-actions--footer > button').evaluateAll((nodes) => nodes.map((node) => ({ top: node.getBoundingClientRect().top, bottom: node.getBoundingClientRect().bottom })));
-                assert(actions[1].top - actions[0].bottom >= 12, 'Mobile footer buttons should stack with a gap');
+                await page.getByRole('button', { name: 'Send Test Notification' }).waitFor();
+                const testAction = await page.getByRole('button', { name: 'Send Test Notification' }).boundingBox();
+                const saveAction = await page.getByRole('button', { name: 'Save Preferences' }).boundingBox();
+                assert(testAction && saveAction, 'Both mobile footer buttons must be visible');
+                assert(saveAction.y - testAction.y - testAction.height >= 12, 'Mobile footer buttons should stack with a gap');
             }
         }
         assert.deepEqual(errors, []);
