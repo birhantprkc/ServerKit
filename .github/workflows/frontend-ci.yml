@@ -53,6 +53,9 @@ jobs:
       - name: Settings browser regressions
         working-directory: frontend
         run: npm run test:browser
+      - name: Settings surfaces and assistant browser regressions
+        working-directory: frontend
+        run: npm run test:settings-ui
       - name: Shared controls browser regressions
         working-directory: frontend
         run: npm run test:controls
