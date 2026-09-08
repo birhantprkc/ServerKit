@@ -34,8 +34,9 @@ export default function AIConnectionsSettings({ connections, providers, defaultI
     };
     const setField = (field, value, clear = false) => {
         const config = { ...draft.config, [field.name]: value };
-        if (field.secret && !value && !clear) delete config[field.name];
+        if (field.secret && !value && !clear && draft.secrets_set.includes(field.name)) delete config[field.name];
         let secretsSet = draft.secrets_set;
+        if (field.secret && clear) secretsSet = secretsSet.filter((name) => name !== field.name);
         if (field.type === 'url') {
             for (const secret of meta.fields.filter((item) => item.secret)) delete config[secret.name];
             secretsSet = [];

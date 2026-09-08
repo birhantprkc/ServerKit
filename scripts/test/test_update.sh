@@ -1629,5 +1629,31 @@ else
 fi
 
 # --------------------------------------------------------------------------
+if (
+    set -Eeuo pipefail
+    source_tree="$WORK/snapshot-source"
+    target_tree="$WORK/snapshot-target"
+    mkdir -p "$source_tree/backend/instance" "$source_tree/backend/venv" "$source_tree/node_modules"
+    printf 'code' > "$source_tree/app.py"
+    printf 'settings' > "$source_tree/backend/instance/settings.json"
+    touch "$source_tree/backend/instance/serverkit.db" \
+        "$source_tree/backend/instance/serverkit.db-wal" \
+        "$source_tree/backend/instance/serverkit.db-shm" \
+        "$source_tree/backend/venv/dependency" "$source_tree/node_modules/dependency"
+    rsync() { return 127; }
+    snapshot_install_tree "$source_tree" "$target_tree"
+    [ "$(cat "$target_tree/app.py")" = code ]
+    [ "$(cat "$target_tree/backend/instance/settings.json")" = settings ]
+    [ ! -e "$target_tree/backend/instance/serverkit.db" ]
+    [ ! -e "$target_tree/backend/instance/serverkit.db-wal" ]
+    [ ! -e "$target_tree/backend/instance/serverkit.db-shm" ]
+    [ ! -e "$target_tree/backend/venv" ]
+    [ ! -e "$target_tree/node_modules" ]
+); then
+    ok "tree snapshot fallback preserves code and excludes database copies and dependencies"
+else
+    bad "tree snapshot fallback loses files or duplicates excluded data"
+fi
+
 printf '\n%d passed, %d failed, %d skipped\n\n' "$PASS" "$FAIL" "$SKIP"
 [ "$FAIL" -eq 0 ]
