@@ -69,7 +69,7 @@ const OverviewTab = ({ app, deployConfig }) => {
         } finally {
             setMetricsLoading(false);
         }
-    }, [app.id, app.name, isDocker, isPython]);
+    }, [app, isDocker, isPython]);
 
     useEffect(() => { loadMetrics(); }, [loadMetrics]);
     usePolling(loadMetrics, METRICS_REFRESH_MS, { immediate: false });

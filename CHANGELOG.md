@@ -32,6 +32,14 @@ Changes after 1.9.28 on the development branch.
   returning partial results for longer requested windows.
 - Use database-specific time buckets so aggregated metrics work on SQLite as
   well as PostgreSQL.
+- Send the caller's redirect URI on the Bitbucket OAuth authorize hop so the
+  flow returns to the panel origin it started from, matching the token
+  exchange (PR #139).
+- Resolve application logs and metrics from the recorded runtime container
+  before falling back to Compose files and name matching, and render JSON log
+  lines as readable structured entries (PR #136).
+- Close the container inspector when opening Logs or Exec so it can no longer
+  cover those surfaces (PR #137).
 
 [Source changes since 1.9.28](https://github.com/jhd3197/ServerKit/compare/v1.9.28...dev).
 

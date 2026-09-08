@@ -47,7 +47,7 @@ const MetricsTabContent = ({ app }) => {
         } finally {
             if (currentRequest === requestId.current) setLoading(false);
         }
-    }, [app.id, app.name, isDocker, isPython]);
+    }, [app, isDocker, isPython]);
 
     useEffect(() => {
         loadMetrics();
