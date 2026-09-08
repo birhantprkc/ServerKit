@@ -3,19 +3,11 @@
         "aISettingsTab": {
             "adminAccessRequired": "অ্যাডমিন অ্যাক্সেস প্রয়োজন.",
             "aiAssistant": "এআই সহকারী",
-            "apiKey": "API কী",
             "blockPromptInjectionAttempts": "প্রম্পট-ইনজেকশন প্রচেষ্টা ব্লক করুন",
             "configureTheInPanelAssistantPowered": "ইন-প্যানেল সহকারী কনফিগার করুন — প্রম্পচার দ্বারা চালিত। API কী এনক্রিপ্ট করা সংরক্ষিত এবং API দ্বারা ফেরত দেওয়া হয় না।",
-            "configuredLeaveBlankToKeep": "কনফিগার করা ✓ (রাখতে ফাঁকা ছেড়ে দিন)",
-            "eGGpt4o": "যেমন gpt-4o",
             "enableAiAssistant": "এআই সহকারী সক্ষম করুন",
-            "endpointOptional": "শেষবিন্দু (ঐচ্ছিক)",
-            "model": "মডেল",
-            "pasteYourApiKey": "আপনার API কী পেস্ট করুন",
             "perConversationCostCeilingUsd": "প্রতি-কথোপকথনের খরচ সিলিং (USD)",
-            "provider": "প্রদানকারী",
-            "redactPiiFromMessagesToolOutput": "বার্তা এবং টুল আউটপুট থেকে PII রিড্যাক্ট করুন",
-            "selectAProvider": "একটি প্রদানকারী নির্বাচন করুন..."
+            "redactPiiFromMessagesToolOutput": "বার্তা এবং টুল আউটপুট থেকে PII রিড্যাক্ট করুন"
         },
         "aboutTab": {
             "aModernLightweightServerManagementPanel": "ওয়েব অ্যাপ্লিকেশন, ডাটাবেস, ডোমেন এবং আরও অনেক কিছু পরিচালনার জন্য একটি আধুনিক, লাইটওয়েট সার্ভার ম্যানেজমেন্ট প্যানেল। Flask এবং React দিয়ে নির্মিত।",

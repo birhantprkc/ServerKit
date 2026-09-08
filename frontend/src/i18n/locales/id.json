@@ -3,19 +3,11 @@
         "aISettingsTab": {
             "adminAccessRequired": "Diperlukan akses admin.",
             "aiAssistant": "Asisten AI",
-            "apiKey": "Kunci API",
             "blockPromptInjectionAttempts": "Blokir upaya injeksi cepat",
             "configureTheInPanelAssistantPowered": "Konfigurasikan asisten dalam panel — didukung oleh Prompture. Kunci API disimpan terenkripsi dan tidak pernah dikembalikan oleh API.",
-            "configuredLeaveBlankToKeep": "Dikonfigurasi ✓ (biarkan kosong untuk disimpan)",
-            "eGGpt4o": "misalnya gpt-4o",
             "enableAiAssistant": "Aktifkan asisten AI",
-            "endpointOptional": "Titik akhir (opsional)",
-            "model": "Model",
-            "pasteYourApiKey": "Tempelkan kunci API Anda",
             "perConversationCostCeilingUsd": "Batas atas biaya per percakapan (USD)",
-            "provider": "Penyedia",
-            "redactPiiFromMessagesToolOutput": "Sunting PII dari pesan & keluaran alat",
-            "selectAProvider": "Pilih penyedia…"
+            "redactPiiFromMessagesToolOutput": "Sunting PII dari pesan & keluaran alat"
         },
         "aboutTab": {
             "aModernLightweightServerManagementPanel": "Panel manajemen server yang modern dan ringan untuk mengelola aplikasi web, database, domain, dan banyak lagi. Dibangun dengan Flask dan React.",

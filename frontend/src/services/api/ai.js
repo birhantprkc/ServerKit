@@ -29,6 +29,23 @@ export async function aiGetProviders() {
     return this.request('/ai/providers');
 }
 
+export async function aiGetConnections() {
+    return this.request('/ai/connections');
+}
+
+export async function aiSaveConnection(body) {
+    const path = body.id ? `/ai/connections/${encodeURIComponent(body.id)}` : '/ai/connections';
+    return this.request(path, { method: body.id ? 'PUT' : 'POST', body });
+}
+
+export async function aiDeleteConnection(id) {
+    return this.request(`/ai/connections/${encodeURIComponent(id)}`, { method: 'DELETE' });
+}
+
+export async function aiProbeConnection(body) {
+    return this.request('/ai/connections/probe', { method: 'POST', body });
+}
+
 export async function aiGetModels(provider) {
     return this.request(`/ai/models?provider=${encodeURIComponent(provider)}`);
 }

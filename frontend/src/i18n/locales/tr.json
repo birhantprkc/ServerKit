@@ -3,19 +3,11 @@
         "aISettingsTab": {
             "adminAccessRequired": "Yönetici erişimi gerekli.",
             "aiAssistant": "Yapay Zeka Asistanı",
-            "apiKey": "API anahtarı",
             "blockPromptInjectionAttempts": "İstem ekleme girişimlerini engelle",
             "configureTheInPanelAssistantPowered": "Prompture tarafından desteklenen panel içi asistanı yapılandırın. API anahtarı şifrelenmiş olarak saklanır ve API tarafından asla döndürülmez.",
-            "configuredLeaveBlankToKeep": "Yapılandırılmış ✓ (saklamak için boş bırakın)",
-            "eGGpt4o": "örneğin gpt-4o",
             "enableAiAssistant": "AI asistanını etkinleştir",
-            "endpointOptional": "Uç nokta (isteğe bağlı)",
-            "model": "Modeli",
-            "pasteYourApiKey": "API anahtarınızı yapıştırın",
             "perConversationCostCeilingUsd": "Görüşme başına maliyet tavanı (USD)",
-            "provider": "sağlayıcı",
-            "redactPiiFromMessagesToolOutput": "Mesajlardan ve araç çıktılarından PII'yi çıkarın",
-            "selectAProvider": "Bir sağlayıcı seçin…"
+            "redactPiiFromMessagesToolOutput": "Mesajlardan ve araç çıktılarından PII'yi çıkarın"
         },
         "aboutTab": {
             "aModernLightweightServerManagementPanel": "Web uygulamalarını, veritabanlarını, etki alanlarını ve daha fazlasını yönetmek için modern, hafif bir sunucu yönetim paneli. Flask ve React ile oluşturulmuştur.",

@@ -24,6 +24,9 @@ const initialState = {
     providerConfigured: false,
     statusLoaded: false,
     conversations: [],
+    connections: [],
+    selectedConnection: '',
+    selectedModel: '',
     activeId: null,
     attachments: [],
     messages: [],                // [{ id, role, content, toolCalls, thinking, status, error }]
@@ -68,6 +71,18 @@ function reducer(state, action) {
             return { ...state, includeContext: action.value };
         case 'SET_STATUS':
             return { ...state, providerConfigured: action.configured, statusLoaded: true };
+        case 'SET_CONNECTIONS': {
+            const selected = action.connections.find((connection) => connection.id === state.selectedConnection)
+                || action.connections.find((connection) => connection.id === action.defaultId);
+            return { ...state, connections: action.connections, selectedConnection: selected?.id || '',
+                selectedModel: state.selectedConnection === selected?.id ? state.selectedModel : selected?.model || '' };
+        }
+        case 'SELECT_CONNECTION': {
+            const connection = state.connections.find((item) => item.id === action.id);
+            return { ...state, selectedConnection: action.id, selectedModel: connection?.model || '' };
+        }
+        case 'SELECT_MODEL':
+            return { ...state, selectedModel: action.model };
         case 'SET_CONVERSATIONS':
             return { ...state, conversations: action.conversations };
         case 'SET_ACTIVE':
@@ -206,6 +221,9 @@ export function AIProvider({ children }) {
 
     // --- status ---
     const loadStatus = useCallback(() => {
+        api.aiGetConnections()
+            .then((data) => dispatch({ type: 'SET_CONNECTIONS', connections: data.connections || [], defaultId: data.default_connection_id }))
+            .catch(() => {});
         api.aiStatus()
             .then((s) => dispatch({ type: 'SET_STATUS', configured: !!s.configured }))
             .catch(() => dispatch({ type: 'SET_STATUS', configured: false }));
@@ -299,6 +317,8 @@ export function AIProvider({ children }) {
             conversation_id: activeIdRef.current || undefined,
             message: text,
             mode,
+            connection_id: activeIdRef.current ? undefined : state.selectedConnection || undefined,
+            model: activeIdRef.current ? undefined : state.selectedModel || undefined,
         };
         if (requestedAttachments.length) {
             payload.attachments = requestedAttachments.map(toAttachmentPayload).filter(Boolean);
@@ -334,6 +354,7 @@ export function AIProvider({ children }) {
         }
     }, [
         state.isStreaming, state.mode, state.includeContext, state.attachments,
+        state.selectedConnection, state.selectedModel,
         buildPageContext, handleEvent, loadConversations,
     ]);
 
@@ -405,6 +426,8 @@ export function AIProvider({ children }) {
         // state
         ...state,
         isOpen: state.open,
+        selectConnection: (id) => dispatch({ type: 'SELECT_CONNECTION', id }),
+        selectModel: (model) => dispatch({ type: 'SELECT_MODEL', model }),
         pageContext,
         // controls
         open, close, toggle, ask, send, stop, confirmAction, setMode, setIncludeContext,

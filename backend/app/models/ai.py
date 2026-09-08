@@ -39,7 +39,8 @@ class AiConversation(JsonColumnMixin, TimestampMixin, db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), index=True, nullable=False)
     title = db.Column(db.String(256))
     mode = db.Column(db.String(16), default=MODE_ASSISTANT)
-    model_name = db.Column(db.String(128))           # 'provider/model' snapshot at creation
+    model_name = db.Column(db.String(384))           # 'provider/model' snapshot at creation
+    connection_id = db.Column(db.String(64), db.ForeignKey('ai_provider_connections.id'), index=True)
     export_json = db.Column(db.Text)                 # Prompture conv.export(strip_images=True)
     last_page = db.Column(db.String(256))            # last route the assistant saw (for resume context)
 
@@ -70,6 +71,7 @@ class AiConversation(JsonColumnMixin, TimestampMixin, db.Model):
             'title': self.title or 'New chat',
             'mode': self.mode,
             'model_name': self.model_name,
+            'connection_id': self.connection_id,
             'last_page': self.last_page,
             'message_count': self.messages.count(),
             'created_at': self.created_at.isoformat() if self.created_at else None,
@@ -78,6 +80,28 @@ class AiConversation(JsonColumnMixin, TimestampMixin, db.Model):
         if include_messages:
             data['messages'] = [m.to_dict() for m in self.messages]
         return data
+
+
+class AiProviderConnection(TimestampMixin, db.Model):
+    """Admin-managed AI connection. All driver configuration is encrypted."""
+    __tablename__ = 'ai_provider_connections'
+
+    id = db.Column(db.String(64), primary_key=True, default=_new_id)
+    name = db.Column(db.String(100), nullable=False)
+    provider = db.Column(db.String(64), nullable=False)
+    model = db.Column(db.String(256), nullable=False)
+    config_encrypted = db.Column(db.Text, nullable=False)
+    conversations = db.relationship('AiConversation', backref='connection')
+
+    @property
+    def config(self):
+        from app.utils.crypto import decrypt_secret
+        return json.loads(decrypt_secret(self.config_encrypted))
+
+    @config.setter
+    def config(self, value):
+        from app.utils.crypto import encrypt_secret
+        self.config_encrypted = encrypt_secret(json.dumps(value))
 
 
 class AiMessage(JsonColumnMixin, db.Model):

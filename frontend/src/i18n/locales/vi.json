@@ -3,19 +3,11 @@
         "aISettingsTab": {
             "adminAccessRequired": "Yêu cầu quyền truy cập của quản trị viên.",
             "aiAssistant": "Trợ lý AI",
-            "apiKey": "Phím API",
             "blockPromptInjectionAttempts": "Chặn các nỗ lực tiêm nhắc nhở",
             "configureTheInPanelAssistantPowered": "Định cấu hình trợ lý trong bảng điều khiển - được cung cấp bởi Nhắc nhở. Khóa API được lưu trữ dưới dạng mã hóa và không bao giờ được API trả về.",
-            "configuredLeaveBlankToKeep": "Đã cấu hình ✓ (để trống để giữ)",
-            "eGGpt4o": "ví dụ. gpt-4o",
             "enableAiAssistant": "Kích hoạt trợ lý AI",
-            "endpointOptional": "Điểm cuối (tùy chọn)",
-            "model": "Người mẫu",
-            "pasteYourApiKey": "Dán khóa API của bạn",
             "perConversationCostCeilingUsd": "Mức trần chi phí cho mỗi cuộc trò chuyện (USD)",
-            "provider": "nhà cung cấp",
-            "redactPiiFromMessagesToolOutput": "Sắp xếp lại PII từ thông báo và đầu ra công cụ",
-            "selectAProvider": "Chọn nhà cung cấp…"
+            "redactPiiFromMessagesToolOutput": "Sắp xếp lại PII từ thông báo và đầu ra công cụ"
         },
         "aboutTab": {
             "aModernLightweightServerManagementPanel": "Bảng quản lý máy chủ hiện đại, gọn nhẹ để quản lý các ứng dụng web, cơ sở dữ liệu, miền, v.v. Được xây dựng với Flask và React.",

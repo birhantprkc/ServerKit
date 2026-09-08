@@ -188,6 +188,15 @@ def is_enabled() -> bool:
 
 def is_configured() -> bool:
     """A provider + model are set and any required key is present."""
+    from app.services import ai_connections
+    if ai_connections.default_id():
+        try:
+            row = ai_connections.get_connection()
+            ai_connections.prepare({'name': row.name, 'provider': row.provider,
+                                    'model': row.model, 'config': row.config})
+            return True
+        except ValueError:
+            return False
     provider = (_setting("ai_provider", "") or "").strip()
     model = (_setting("ai_model", "") or "").strip()
     if not provider or not model:
@@ -200,6 +209,9 @@ def is_configured() -> bool:
 
 
 def current_model_name() -> str:
+    from app.services import ai_connections
+    if ai_connections.default_id():
+        return ai_connections.model_name(ai_connections.get_connection())
     provider = (_setting("ai_provider", "") or "").strip()
     model = (_setting("ai_model", "") or "").strip()
     return f"{_driver_provider(provider)}/{model}" if provider and model else ""
@@ -240,45 +252,35 @@ def build_provider_env(*, provider: Optional[str] = None, api_key: Optional[str]
 
 def list_providers() -> list[dict]:
     """Provider catalog for the settings dropdown (models = fallback suggestions)."""
-    return [
-        {"id": p["id"], "label": p["label"], "needs_key": p["needs_key"],
-         "supports_endpoint": p["supports_endpoint"]}
-        for p in CURATED_PROVIDERS
-    ]
+    from app.services.ai_connections import catalog
+    return catalog()
 
 
 def list_models(provider: str) -> dict:
     """Best-effort live model list for *provider*, falling back to curated suggestions."""
+    from app.services import ai_connections
     provider = (provider or "").strip()
     fallback = _PROVIDER_BY_ID.get(provider, {}).get("models", [])
     try:
-        from prompture.drivers import get_driver_for_model
-        driver = get_driver_for_model(f"{_driver_provider(provider)}/", env=build_provider_env(provider=provider))
-        lister = getattr(driver, "list_models", None)
-        if callable(lister):
-            models = lister()
-            if models:
-                return {"models": list(models), "source": "live"}
-    except Exception:
-        logger.debug("list_models(%s): live lookup failed, using fallback", provider, exc_info=True)
+        row = ai_connections.get_connection()
+        if row.provider == provider:
+            return ai_connections.probe({'name': row.name, 'provider': row.provider,
+                                         'model': row.model, 'config': row.config})
+    except ValueError:
+        pass  # Never borrow a different provider's credentials for discovery.
     return {"models": fallback, "source": "fallback"}
 
 
 def test_settings(provider: str, model: str, api_key: Optional[str] = None,
                   endpoint: Optional[str] = None) -> dict:
-    """Validate a provider/model/key by constructing the driver and probing models."""
+    """Legacy settings probe; use the same real request as saved connections."""
+    from app.services.ai_connections import probe
     try:
-        from prompture.drivers import get_driver_for_model
-        env = build_provider_env(provider=provider, api_key=api_key, endpoint=endpoint)
-        driver = get_driver_for_model(f"{_driver_provider(provider)}/{model}", env=env)
-        lister = getattr(driver, "list_models", None)
-        if callable(lister):
-            try:
-                lister()
-            except Exception:
-                pass  # not all providers support listing; driver constructed = good enough
-        return {"ok": True}
-    except Exception as exc:
+        config = {'api_key': api_key} if api_key else {}
+        if endpoint:
+            config['base_url' if provider == 'openai' else 'endpoint'] = endpoint
+        return probe({'provider': provider, 'model': model, 'config': config}, test=True)
+    except ValueError as exc:
         return {"ok": False, "error": str(exc)}
 
 
@@ -522,26 +524,53 @@ def build_conversation(row, user, mode: str, page_context: Optional[dict],
                        attachment_context: Optional[list[dict]] = None) -> Conversation:
     """Create a fresh Conversation or resume from the stored export (re-supplying tools)."""
     from prompture import Conversation
+    from app.services import ai_connections
 
     registry = build_tool_registry(user, mode, gate)
     system = build_system_prompt(
         user, mode, page_context, attachment_context=attachment_context,
     )
+    connection_id = getattr(row, 'connection_id', None)
+    if connection_id:
+        connection = ai_connections.get_connection(connection_id)
+        model = (row.model_name or '').split('/', 1)[-1] or connection.model
+        driver = ai_connections.build_driver(connection, model)
+        resolved_model = ai_connections.model_name(connection, model)
+    else:
+        # Compatibility for pre-migration/test conversations. Never attach a
+        # different provider's current credentials to an old conversation.
+        if ai_connections.default_id():
+            raise ValueError('This older conversation has no saved connection. Start a new chat using its original provider.')
+        resolved_model = row.model_name or current_model_name()
+        if resolved_model.split('/', 1)[0] != current_model_name().split('/', 1)[0]:
+            raise ValueError('This older conversation needs its original provider configuration.')
+        from prompture.drivers import get_driver_for_model
+        driver = get_driver_for_model(resolved_model, env=build_provider_env())
+
+    # Prompture 1.10 from_export does not accept a driver/env. Inject the already
+    # configured instance through its constructor hook, so resume never builds
+    # an ambient/global driver, even temporarily. History/usage restoration stays
+    # owned by Prompture. Reapply current policy instead of trusting export options.
+    class ConfiguredConversation(Conversation):
+        def __init__(self, **kwargs):
+            kwargs.update(driver=driver, model_name=resolved_model,
+                          max_tool_rounds=(6 if mode == 'assistant' else 0),
+                          max_tool_result_length=4000, max_cost=_max_cost(),
+                          budget_policy=None, fallback_models=None, options={})
+            super().__init__(**kwargs)
+
     export = row.export
     if export:
-        conv = Conversation.from_export(_maybe_redact_result(export), tools=registry)
+        conv = ConfiguredConversation.from_export(_maybe_redact_result(export), tools=registry)
         conv.system_prompt = system  # refresh page context each turn
         return conv
-    return Conversation(
-        model_name=row.model_name or current_model_name(),
+    return ConfiguredConversation(
+        model_name=resolved_model,
         system_prompt=system,
         tools=registry,
-        env=build_provider_env(),
         max_tool_rounds=(6 if mode == "assistant" else 0),
         max_tool_result_length=4000,
         max_cost=_max_cost(),
-        budget_policy="degrade" if _fallback_models() else None,
-        fallback_models=_fallback_models() or None,
         simulated_tools="auto",
         conversation_id=row.id,
     )
@@ -582,12 +611,15 @@ def derive_title(message: str) -> str:
 # ===========================================================================
 def _oneshot_conversation(user, mode: str, page_context: Optional[dict]) -> Conversation:
     from prompture import Conversation
+    from app.services import ai_connections
 
     ensure_initialized()
     registry = build_tool_registry(user, mode, gate=None)
     system = build_system_prompt(user, mode, page_context)
     return Conversation(
         model_name=current_model_name(),
+        driver=(ai_connections.build_driver(ai_connections.get_connection())
+                if ai_connections.default_id() else None),
         system_prompt=system,
         tools=registry,
         env=build_provider_env(),

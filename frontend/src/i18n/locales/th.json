@@ -3,19 +3,11 @@
         "aISettingsTab": {
             "adminAccessRequired": "จำเป็นต้องเข้าถึงระดับผู้ดูแลระบบ",
             "aiAssistant": "ผู้ช่วยเอไอ",
-            "apiKey": "คีย์ API",
             "blockPromptInjectionAttempts": "บล็อกความพยายามในการฉีดพร้อมท์",
             "configureTheInPanelAssistantPowered": "กำหนดค่าผู้ช่วยในแผง — ขับเคลื่อนโดย Prompture คีย์ API จะถูกจัดเก็บแบบเข้ารหัสและไม่เคยส่งคืนโดย API",
-            "configuredLeaveBlankToKeep": "กำหนดค่า ✓ แล้ว (เว้นว่างไว้เพื่อเก็บไว้)",
-            "eGGpt4o": "เช่น GPT-4o",
             "enableAiAssistant": "เปิดใช้งานผู้ช่วย AI",
-            "endpointOptional": "จุดสิ้นสุด (ไม่บังคับ)",
-            "model": "แบบอย่าง",
-            "pasteYourApiKey": "วางคีย์ API ของคุณ",
             "perConversationCostCeilingUsd": "เพดานค่าใช้จ่ายต่อการสนทนา (USD)",
-            "provider": "ผู้ให้บริการ",
-            "redactPiiFromMessagesToolOutput": "ปกปิด PII จากข้อความและเอาต์พุตของเครื่องมือ",
-            "selectAProvider": "เลือกผู้ให้บริการ..."
+            "redactPiiFromMessagesToolOutput": "ปกปิด PII จากข้อความและเอาต์พุตของเครื่องมือ"
         },
         "aboutTab": {
             "aModernLightweightServerManagementPanel": "แผงการจัดการเซิร์ฟเวอร์ที่ทันสมัยและมีน้ำหนักเบาสำหรับการจัดการแอปพลิเคชันเว็บ ฐานข้อมูล โดเมน และอื่นๆ สร้างด้วย Flask และ React",

@@ -610,6 +610,19 @@ Spin up and manage cloud servers directly from the panel.
 Current focus areas on the `dev` branch. Core work centers on the deploy experience and
 platform infrastructure; new capability areas ship as Marketplace extensions.
 
+## AI Assistant: Prompture Provider Connections (implemented)
+
+Community request: D3M4L, September 1, 2026 — connect the assistant to OmniRoute.
+
+- [x] Discover native chat providers from Prompture metadata instead of an eight-entry dropdown, deduplicate aliases, and label missing optional dependencies.
+- [x] Provide provider-specific fields, compatible-endpoint presets, and named encrypted connections with a panel default.
+- [x] Support OmniRoute and other compatible gateways with exact model IDs, including slashes and routing aliases, plus discovery and manual entry.
+- [x] Select a connection/model for new chats; retain it on resume and allow credential rotation without rerouting old chats.
+- [x] Test compatible endpoints with a real bounded chat request; verify native model discovery and surface failures rather than treating driver construction as success.
+- [x] Migrate existing settings and matching conversations, preserve write confirmations and RBAC, and test secret isolation, streaming, tool protocol, and fresh/resumed conversations.
+
+See [AI provider connections](docs/AI_PROVIDERS.md) for setup and compatibility details. ServerKit uses Prompture's existing drivers; compatible gateways use its OpenAI driver because the generic driver in 1.10 lacks native streaming and tools. Automatic cross-connection fallback remains a separate feature. OmniRoute-compatible protocol behavior is covered by SDK transport tests; a live OmniRoute instance is still needed for deployment-specific verification.
+
 ## Deploy Console & Live Run Logs
 
 The publish pipeline is becoming ServerKit's signature experience: deploy anything, watch it

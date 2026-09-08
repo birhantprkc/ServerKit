@@ -1,0 +1,253 @@
+"""Provider discovery, credential boundaries, migration, and real SDK wire format."""
+import importlib.util
+import json
+from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
+
+from app import db
+from app.models.ai import AiConversation, AiProviderConnection
+from app.models.system_settings import SystemSettings
+from app.services import ai_connections as service, ai_service
+
+
+def draft(**overrides):
+    return {'name': 'OmniRoute', 'provider': 'openai_compatible', 'model': 'anthropic/team/model',
+            'config': {'endpoint': 'http://gateway.local:20128/v1', 'api_key': 'private-test-key'}, **overrides}
+
+
+def test_catalog_uses_prompture_descriptors_and_deduplicates():
+    from prompture.drivers.provider_descriptors import PROVIDER_DESCRIPTORS
+    catalog = service.catalog()
+    names = [p['id'] for p in catalog]
+    assert len(names) == len(set(names))
+    assert {d.name for d in PROVIDER_DESCRIPTORS if d.llm_sync and not d.alias_for} <= set(names)
+    assert {'claude', 'google', 'openai', 'openai_compatible', 'bedrock', 'mistral'} <= set(names)
+    assert service.provider_meta('openai_compatible')['presets']
+
+
+def test_catalog_reports_missing_dependencies(monkeypatch):
+    monkeypatch.setattr(service, '_installed', lambda module: False)
+    assert service.provider_meta('claude')['available'] is False
+    with pytest.raises(ValueError, match='dependencies'):
+        service.prepare(draft(provider='claude', config={'api_key': 'key'}))
+
+
+@pytest.mark.parametrize('url', ['file:///tmp/a', 'http://user:pass@host/v1', 'https://host/v1?key=x',
+                                  'http://host/#fragment', 'http://host:99999', 'http://host/a b'])
+def test_invalid_endpoint(url):
+    with pytest.raises(ValueError):
+        service.prepare(draft(config={'endpoint': url}))
+
+
+def test_profile_storage_and_api_never_return_secrets(app, client, auth_headers):
+    response = client.post('/api/v1/ai/connections', json=draft(), headers=auth_headers)
+    assert response.status_code == 201
+    data = response.get_json()
+    assert data['secrets_set'] == ['api_key']
+    assert 'api_key' not in data['config']
+    with app.app_context():
+        row = db.session.get(AiProviderConnection, data['id'])
+        assert 'private-test-key' not in row.config_encrypted
+        assert row.config['api_key'] == 'private-test-key'
+        assert service.default_id() == row.id
+    for path in ('/api/v1/ai/connections', '/api/v1/ai/settings'):
+        body = client.get(path, headers=auth_headers).get_data(as_text=True)
+        assert 'private-test-key' not in body
+    selector = client.get('/api/v1/ai/connections', headers=auth_headers).get_json()['connections'][0]
+    assert set(selector) == {'id', 'name', 'provider', 'model'}
+
+
+def test_secret_retention_clear_and_endpoint_change(app):
+    with app.app_context():
+        row = service.save(draft())
+        same = service.prepare(draft(config={'endpoint': 'http://gateway.local:20128/v1'}), row)
+        assert same['config']['api_key'] == 'private-test-key'
+        changed = service.prepare(draft(config={'endpoint': 'http://different.local/v1'}), row)
+        assert changed['config']['api_key'] == ''
+        cleared = service.prepare(draft(config={'api_key': ''}), row)
+        assert cleared['config']['api_key'] == ''
+        with pytest.raises(ValueError, match='required'):
+            service.prepare(draft(provider='claude', config={}), row)
+
+
+def test_native_fields_and_global_credentials_are_not_used(monkeypatch):
+    monkeypatch.setenv('OPENAI_API_KEY', 'ambient-secret')
+    monkeypatch.setenv('OPENAI_BASE_URL', 'https://unintended.local/v1')
+    with pytest.raises(ValueError, match='required'):
+        service.prepare(draft(provider='openai', config={}))
+    prepared = service.prepare(draft(provider='openai', config={'api_key': 'explicit'}))
+    row = SimpleNamespace(**prepared)
+    driver = service.build_driver(row)
+    assert driver.api_key == 'explicit'
+    assert str(driver.client.base_url) == 'https://api.openai.com/v1/'
+    driver.client.close()
+
+
+def test_native_anthropic_driver_uses_explicit_credentials(monkeypatch):
+    monkeypatch.setenv('CLAUDE_API_KEY', 'ambient-secret')
+    row = SimpleNamespace(**service.prepare(draft(provider='claude', model='claude-test', config={'api_key': 'explicit-claude'})))
+    driver = service.build_driver(row)
+    assert driver.api_key == 'explicit-claude'
+    assert driver.model == 'claude-test'
+
+
+def test_probe_uses_draft_credentials_preserves_ids_and_rejects_failure(app, monkeypatch):
+    import requests
+    calls = []
+    def get(url, **kwargs):
+        calls.append((url, kwargs))
+        return SimpleNamespace(status_code=200, raise_for_status=lambda: None,
+                               json=lambda: {'data': [{'id': 'anthropic/team/model'}, {'id': 'auto'}]})
+    monkeypatch.setattr(requests, 'get', get)
+    with app.app_context():
+        row = service.save(draft())
+        result = service.probe(draft(config={'endpoint': 'http://other.local/v1', 'api_key': 'new-key'}), row)
+    assert result['models'] == ['anthropic/team/model', 'auto']
+    assert calls[0][1]['headers']['Authorization'] == 'Bearer new-key'
+    assert calls[0][1]['timeout'] == (5, 10)
+    assert calls[0][1]['allow_redirects'] is False
+    def fail(*args, **kwargs):
+        raise requests.Timeout('private-test-key')
+    monkeypatch.setattr(requests, 'get', fail)
+    with pytest.raises(ValueError, match='timeout') as exc:
+        service.probe(draft())
+    assert 'private-test-key' not in str(exc.value)
+
+
+def test_connection_test_requires_real_response(monkeypatch):
+    import requests
+    monkeypatch.setattr(requests, 'post', lambda *a, **kw: SimpleNamespace(
+        status_code=200, raise_for_status=lambda: None, json=lambda: {}))
+    with pytest.raises(ValueError, match='chat completion'):
+        service.probe(draft(), test=True)
+
+
+def test_chats_keep_connection_and_model_and_block_destination_changes(app, client, auth_headers):
+    first = client.post('/api/v1/ai/connections', json=draft(), headers=auth_headers).get_json()
+    chat = client.post('/api/v1/ai/conversations', json={'connection_id': first['id'], 'model': 'auto/fast'}, headers=auth_headers)
+    assert chat.status_code == 201
+    second = client.post('/api/v1/ai/connections', json=draft(name='Second', make_default=True), headers=auth_headers).get_json()
+    with app.app_context():
+        row = db.session.get(AiConversation, chat.get_json()['id'])
+        assert row.connection_id == first['id']
+        assert row.model_name == 'openai_compatible/auto/fast'
+        assert service.default_id() == second['id']
+    response = client.put('/api/v1/ai/connections/' + first['id'], json=draft(config={'endpoint': 'http://other/v1'}), headers=auth_headers)
+    assert response.status_code == 400
+    assert client.delete('/api/v1/ai/connections/' + first['id'], headers=auth_headers).status_code == 409
+
+
+def _mock_transport(driver, handler):
+    # Support both SDK transport module names; newer OpenAI SDKs use httpx2.
+    module = importlib.import_module(type(driver.client._client._transport).__module__.split('.')[0])
+    driver.client = driver.client.with_options(http_client=module.Client(
+        transport=module.MockTransport(handler), event_hooks=driver.client._client.event_hooks), max_retries=0)
+    return module
+
+
+def test_compatible_driver_streaming_and_tool_protocol_preserve_model(monkeypatch):
+    from prompture.drivers.cachibot_driver import CachiBotDriver
+    monkeypatch.setattr(CachiBotDriver, '_MODEL_MAP', {'auto': 'wrong/provider'})
+    monkeypatch.setenv('OPENAI_API_KEY', 'ambient')
+    row = SimpleNamespace(**service.prepare(draft(model='auto', config={'endpoint': 'http://gateway.local/v1'})))
+    driver = service.build_driver(row)
+    calls = []
+    def respond(request):
+        payload = json.loads(request.content)
+        calls.append((dict(request.headers), payload))
+        if payload.get('stream'):
+            content = 'data: ' + json.dumps({'id': 'c1', 'choices': [{'index': 0, 'delta': {'content': 'OK'}, 'finish_reason': None}]})
+            return http.Response(200, content=(content + '\n\ndata: [DONE]\n\n').encode(), headers={'content-type': 'text/event-stream'})
+        return http.Response(200, json={'id': 'c1', 'object': 'chat.completion', 'created': 1,
+            'model': 'auto', 'choices': [{'index': 0, 'finish_reason': 'tool_calls', 'message': {'role': 'assistant', 'content': None,
+                'tool_calls': [{'id': 'call1', 'type': 'function', 'function': {'name': 'peek', 'arguments': '{}'}}]}}],
+            'usage': {'prompt_tokens': 3, 'completion_tokens': 2, 'total_tokens': 5}})
+    http = _mock_transport(driver, respond)
+    assert driver.supports_streaming and driver.supports_tool_use
+    chunks = list(driver.generate_messages_stream([{'role': 'user', 'content': 'Hi'}], {}))
+    assert any(c.get('text') == 'OK' for c in chunks)
+    result = driver.generate_messages_with_tools([{'role': 'user', 'content': 'Peek'}],
+        [{'type': 'function', 'function': {'name': 'peek', 'parameters': {'type': 'object', 'properties': {}}}}], {})
+    assert result['tool_calls'][0]['name'] == 'peek'
+    assert all(payload['model'] == 'auto' for _, payload in calls)
+    assert all('authorization' not in headers for headers, _ in calls)
+    assert calls[-1][1]['tools'][0]['function']['name'] == 'peek'
+    driver.client.close()
+
+
+def test_resume_restores_history_with_original_connection_not_ambient(app, monkeypatch):
+    from prompture import Conversation
+    from prompture.drivers.base import Driver
+    calls = []
+    class FakeDriver(Driver):
+        def generate(self, prompt, options):
+            return {'text': 'OK', 'meta': {}}
+    monkeypatch.setattr(ai_service, 'build_tool_registry', lambda *a: None)
+    monkeypatch.setattr(ai_service, 'build_system_prompt', lambda *a, **kw: 'Current policy')
+    monkeypatch.setattr(ai_service, '_maybe_redact_result', lambda data: data)
+    monkeypatch.setattr(service, 'build_driver', lambda row, model=None: calls.append((row.id, model, row.config['api_key'])) or FakeDriver())
+    with app.app_context():
+        first = service.save(draft())
+        row = SimpleNamespace(id='chat', connection_id=first.id, model_name='openai_compatible/auto', export=None)
+        fresh = ai_service.build_conversation(row, None, 'simple', {}, None)
+        fresh._messages = [{'role': 'user', 'content': 'Remember me'}]
+        row.export = fresh.export()
+        service.save(draft(name='Other', make_default=True, config={'endpoint': 'http://other/v1', 'api_key': 'different'}))
+        resumed = ai_service.build_conversation(row, None, 'simple', {}, None)
+        assert isinstance(resumed, Conversation)
+        assert resumed._messages[0]['content'] == 'Remember me'
+        assert calls == [(first.id, 'auto', 'private-test-key')] * 2
+        assert resumed._fallback_models is None
+        assert 'private-test-key' not in json.dumps(resumed.export())
+
+
+def test_migration_preserves_legacy_key_and_conversation(app):
+    from alembic.migration import MigrationContext
+    from alembic.operations import Operations
+    from app.utils.crypto import encrypt_secret
+    path = Path(__file__).parents[1] / 'migrations/versions/098_ai_provider_connections.py'
+    spec = importlib.util.spec_from_file_location('migration098', path)
+    migration = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(migration)
+    with app.app_context():
+        SystemSettings.set('ai_provider', 'openai')
+        SystemSettings.set('ai_model', 'gpt-test')
+        SystemSettings.set('ai_api_key_encrypted', encrypt_secret('legacy-key'))
+        db.session.commit()
+        with db.engine.begin() as connection:
+            with Operations.context(MigrationContext.configure(connection)):
+                migration.upgrade()
+                migration.upgrade()  # startup schema sync / rerun is safe
+        db.session.expire_all()
+        row = db.session.get(AiProviderConnection, 'legacy')
+        assert row.config['api_key'] == 'legacy-key'
+        assert service.default_id() == 'legacy'
+        # Legacy OpenAI records predate the explicit base_url field. Editing the
+        # name must not count the official default URL as a destination change.
+        prepared = service.prepare({'name': 'Renamed', 'provider': 'openai', 'model': 'gpt-test', 'config': {}}, row)
+        assert prepared['config']['api_key'] == 'legacy-key'
+
+
+def test_migration_from_old_schema_adds_connection_foreign_key():
+    import sqlalchemy as sa
+    from alembic.migration import MigrationContext
+    from alembic.operations import Operations
+    path = Path(__file__).parents[1] / 'migrations/versions/098_ai_provider_connections.py'
+    spec = importlib.util.spec_from_file_location('migration098_old', path)
+    migration = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(migration)
+    engine = sa.create_engine('sqlite:///:memory:')
+    with engine.begin() as conn:
+        conn.execute(sa.text('CREATE TABLE system_settings (key TEXT, value TEXT, value_type TEXT)'))
+        conn.execute(sa.text('CREATE TABLE ai_conversations (id TEXT PRIMARY KEY, model_name VARCHAR(128))'))
+        conn.execute(sa.text("INSERT INTO ai_conversations VALUES ('old', 'claude/old-model')"))
+        with Operations.context(MigrationContext.configure(conn)):
+            migration.upgrade()
+        inspector = sa.inspect(conn)
+        assert 'ai_provider_connections' in inspector.get_table_names()
+        assert any(c['name'] == 'connection_id' for c in inspector.get_columns('ai_conversations'))
+        assert inspector.get_foreign_keys('ai_conversations')[0]['referred_table'] == 'ai_provider_connections'
+        assert conn.execute(sa.text("SELECT model_name FROM ai_conversations WHERE id = 'old'")).scalar() == 'claude/old-model'
+    engine.dispose()

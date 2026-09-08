@@ -35,6 +35,7 @@ from app import db
 from app.middleware.rbac import admin_required, get_current_user
 from app.models.ai import AiConversation, AiMessage, AiPendingAction
 from app.services import ai_service
+from app.services import ai_connections
 from app.services.ai_attachment_registry import (
     normalize_references,
     resolve_attachments,
@@ -104,14 +105,22 @@ def _owned_conversation(conversation_id: str, user):
     return row
 
 
-def _load_or_create(conversation_id, user, mode):
+def _load_or_create(conversation_id, user, mode, connection_id=None, model=None):
     if conversation_id:
         row = _owned_conversation(conversation_id, user)
         return row  # may be None -> caller 404s
+    connection = None
+    if connection_id is not None and (not isinstance(connection_id, str) or len(connection_id) > 64):
+        raise ValidationError('Invalid connection ID')
+    if connection_id or ai_connections.default_id():
+        connection = ai_connections.get_connection(connection_id)
+    if model is not None and (not isinstance(model, str) or not model.strip() or len(model) > 256):
+        raise ValidationError('Invalid model ID')
     row = AiConversation(
         user_id=user.id,
         mode=mode or AiConversation.MODE_ASSISTANT,
-        model_name=ai_service.current_model_name(),
+        model_name=ai_connections.model_name(connection, model) if connection else ai_service.current_model_name(),
+        connection_id=connection.id if connection else None,
     )
     db.session.add(row)
     db.session.commit()
@@ -159,6 +168,9 @@ def get_settings():
         'injection_detection': bool(SettingsService.get('ai_injection_detection', True)),
         # Never return the key itself — only whether one is configured.
         'api_key_set': bool(SettingsService.get('ai_api_key_encrypted', '')),
+        'connections': [ai_connections.public_connection(r, details=True)
+                        for r in ai_connections.AiProviderConnection.query.order_by(ai_connections.AiProviderConnection.name).all()],
+        'default_connection_id': ai_connections.default_id(),
     })
 
 
@@ -214,7 +226,7 @@ def test_settings():
     endpoint = data.get('endpoint')
     # Use the posted key if present, else the stored (decrypted) one.
     api_key = data.get('api_key')
-    if not api_key:
+    if api_key is None and provider == SettingsService.get('ai_provider', '') and endpoint == SettingsService.get('ai_endpoint', ''):
         api_key = ai_service._decrypted_key()
     if not provider or not model:
         return jsonify({'ok': False, 'error': 'provider and model are required'}), 400
@@ -225,6 +237,70 @@ def test_settings():
 @admin_required
 def providers():
     return jsonify({'providers': ai_service.list_providers()})
+
+
+@ai_bp.route('/connections', methods=['GET'])
+@jwt_required()
+def connections():
+    # The chat selector needs names/models only, never configuration or keys.
+    rows = ai_connections.AiProviderConnection.query.order_by(ai_connections.AiProviderConnection.name).all()
+    return jsonify({'connections': [ai_connections.public_connection(r) for r in rows],
+                    'default_connection_id': ai_connections.default_id()})
+
+
+@ai_bp.route('/connections', methods=['POST'])
+@admin_required
+def add_connection():
+    try:
+        row = ai_connections.save(request.get_json(silent=True))
+        return jsonify(ai_connections.public_connection(row, details=True)), 201
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
+
+
+@ai_bp.route('/connections/<connection_id>', methods=['PUT'])
+@admin_required
+def update_connection(connection_id):
+    row = db.session.get(ai_connections.AiProviderConnection, connection_id)
+    if row is None:
+        return jsonify({'error': 'Connection not found'}), 404
+    try:
+        row = ai_connections.save(request.get_json(silent=True), row)
+        return jsonify(ai_connections.public_connection(row, details=True))
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
+
+
+@ai_bp.route('/connections/<connection_id>', methods=['DELETE'])
+@admin_required
+def delete_connection(connection_id):
+    row = db.session.get(ai_connections.AiProviderConnection, connection_id)
+    if row is None:
+        return jsonify({'error': 'Connection not found'}), 404
+    if row.conversations or ai_connections.default_id() == row.id:
+        return jsonify({'error': 'Choose another default and delete conversations using this connection before removing it.'}), 409
+    db.session.delete(row)
+    db.session.commit()
+    return jsonify({'ok': True})
+
+
+@ai_bp.route('/connections/probe', methods=['POST'])
+@admin_required
+def probe_connection():
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({'error': 'Connection must be an object.'}), 400
+    existing = None
+    if data.get('id'):
+        if not isinstance(data['id'], str) or len(data['id']) > 64:
+            return jsonify({'error': 'Invalid connection ID'}), 400
+        existing = db.session.get(ai_connections.AiProviderConnection, data['id'])
+        if existing is None:
+            return jsonify({'error': 'Connection not found'}), 404
+    try:
+        return jsonify(ai_connections.probe(data, existing, test=data.get('test') is True))
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
 
 
 @ai_bp.route('/models', methods=['GET'])
@@ -271,9 +347,11 @@ def create_conversation():
     user = get_current_user()
     data = request.get_json(silent=True) or {}
     mode = data.get('mode') or AiConversation.MODE_ASSISTANT
-    row = AiConversation(user_id=user.id, mode=mode, title=data.get('title'),
-                         model_name=ai_service.current_model_name())
-    db.session.add(row)
+    try:
+        row = _load_or_create(None, user, mode, data.get('connection_id'), data.get('model'))
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
+    row.title = data.get('title')
     db.session.commit()
     return jsonify(row.to_dict()), 201
 
@@ -342,7 +420,10 @@ def chat():
     # global handler renders the 400 with a code and request_id.
     attachment_refs = _attachment_references(data)
 
-    row = _load_or_create(data.get('conversation_id'), user, mode)
+    try:
+        row = _load_or_create(data.get('conversation_id'), user, mode, data.get('connection_id'), data.get('model'))
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
     if row is None:
         return jsonify({'error': 'Conversation not found'}), 404
 
@@ -409,7 +490,10 @@ def chat_stream():
     # global handler renders the 400 with a code and request_id.
     attachment_refs = _attachment_references(data)
 
-    row = _load_or_create(data.get('conversation_id'), user, mode)
+    try:
+        row = _load_or_create(data.get('conversation_id'), user, mode, data.get('connection_id'), data.get('model'))
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
     if row is None:
         return jsonify({'error': 'Conversation not found'}), 404
 

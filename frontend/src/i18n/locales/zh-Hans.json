@@ -3,19 +3,11 @@
         "aISettingsTab": {
             "adminAccessRequired": "需要管理员访问权限。",
             "aiAssistant": "AI 助手",
-            "apiKey": "API 密钥",
             "blockPromptInjectionAttempts": "阻止提示注入尝试",
             "configureTheInPanelAssistantPowered": "配置面板内助手 — 由 Prompture 提供支持。 API 密钥以加密方式存储，并且 API 绝不会返回。",
-            "configuredLeaveBlankToKeep": "已配置 ✓（留空保留）",
-            "eGGpt4o": "例如GPT-4O",
             "enableAiAssistant": "启用AI助手",
-            "endpointOptional": "端点（可选）",
-            "model": "模型",
-            "pasteYourApiKey": "粘贴您的 API 密钥",
             "perConversationCostCeilingUsd": "每次对话成本上限（美元）",
-            "provider": "提供商",
-            "redactPiiFromMessagesToolOutput": "从消息和工具输出中编辑 PII",
-            "selectAProvider": "选择提供商..."
+            "redactPiiFromMessagesToolOutput": "从消息和工具输出中编辑 PII"
         },
         "aboutTab": {
             "aModernLightweightServerManagementPanel": "一个现代、轻量级的服务器管理面板，用于管理 Web 应用程序、数据库、域等。使用 Flask 和 React 构建。",
