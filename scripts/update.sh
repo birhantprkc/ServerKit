@@ -986,6 +986,26 @@ pg_url_from_env() {
 # ---------------------------------------------------------------------------
 # Backup
 # ---------------------------------------------------------------------------
+snapshot_install_tree() {
+    local source_dir="$1" target_dir="$2"
+    rsync -a --exclude=venv --exclude=backups --exclude=node_modules \
+        --exclude='backend/instance/*.db' \
+        --exclude='backend/instance/*.db-wal' \
+        --exclude='backend/instance/*.db-shm' \
+        "$source_dir/" "$target_dir/" 2>/dev/null && return 0
+    # Preserve the exclusions even on hosts without rsync; never stage a
+    # second database copy just to delete it after copying the tree.
+    mkdir -p "$target_dir" || return 1
+    (set -o pipefail
+        tar -C "$source_dir" --exclude=venv --exclude=backups --exclude=node_modules \
+            --exclude='./backend/instance/*.db' \
+            --exclude='./backend/instance/*.db-wal' \
+            --exclude='./backend/instance/*.db-shm' -cf - . \
+            | tar -C "$target_dir" -xpf -
+    )
+}
+
+
 backup_current() {
     phase "Database Backup"
     mkdir -p "$BACKUP_DIR"
@@ -1072,10 +1092,16 @@ backup_current() {
     local tree_backup
     tree_backup="$BACKUP_DIR/serverkit-tree-$(date +%Y%m%d-%H%M%S)"
     if [ -d "$active" ]; then
-        run_or_dry rsync -a --exclude=venv --exclude=backups --exclude=node_modules \
-            "$active/" "$tree_backup/" 2>/dev/null || \
-            run_or_dry cp -a "$active" "$tree_backup" 2>/dev/null || true
-        good "Install tree backed up to $tree_backup"
+        # The SQLite database is NOT part of the tree snapshot: it was just
+        # written as the pre-upgrade copy above, and rollback restores from
+        # that copy, never from the tree. Copying it here too doubled every
+        # update's backup footprint (a 450 MB database became 900 MB per run),
+        # which is how small VPSes kept filling their disk with backups.
+        if run_or_dry snapshot_install_tree "$active" "$tree_backup"; then
+            good "Install tree backed up to $tree_backup"
+        else
+            warn "Install tree backup failed: $tree_backup may be incomplete"
+        fi
     fi
 }
 

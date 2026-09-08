@@ -3,19 +3,11 @@
         "aISettingsTab": {
             "adminAccessRequired": "관리자 액세스가 필요합니다.",
             "aiAssistant": "AI 어시스턴트",
-            "apiKey": "API 키",
             "blockPromptInjectionAttempts": "프롬프트 주입 시도 차단",
             "configureTheInPanelAssistantPowered": "Prompture에서 제공하는 패널 내 도우미를 구성하세요. API 키는 암호화되어 저장되며 API에 의해 반환되지 않습니다.",
-            "configuredLeaveBlankToKeep": "구성됨 ✓ (유지하려면 비워두세요)",
-            "eGGpt4o": "예를 들어 gpt-4o",
             "enableAiAssistant": "AI 어시스턴트 활성화",
-            "endpointOptional": "엔드포인트(선택사항)",
-            "model": "모델",
-            "pasteYourApiKey": "API 키를 붙여넣으세요.",
             "perConversationCostCeilingUsd": "대화당 비용 상한선(USD)",
-            "provider": "공급자",
-            "redactPiiFromMessagesToolOutput": "메시지 및 도구 출력에서 PII 수정",
-            "selectAProvider": "제공업체를 선택하세요…"
+            "redactPiiFromMessagesToolOutput": "메시지 및 도구 출력에서 PII 수정"
         },
         "aboutTab": {
             "aModernLightweightServerManagementPanel": "웹 애플리케이션, 데이터베이스, 도메인 등을 관리하기 위한 현대적이고 가벼운 서버 관리 패널입니다. Flask와 React로 제작되었습니다.",

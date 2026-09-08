@@ -3,19 +3,11 @@
         "aISettingsTab": {
             "adminAccessRequired": "Wymagany dostęp administratora.",
             "aiAssistant": "Asystent AI",
-            "apiKey": "Klucz API",
             "blockPromptInjectionAttempts": "Blokuj próby wstrzyknięcia monitu",
             "configureTheInPanelAssistantPowered": "Skonfiguruj asystenta w panelu — obsługiwanego przez Prompture. Klucz API jest przechowywany w postaci zaszyfrowanej i nigdy nie jest zwracany przez API.",
-            "configuredLeaveBlankToKeep": "Skonfigurowano ✓ (pozostaw puste, aby zachować)",
-            "eGGpt4o": "np. gpt-4o",
             "enableAiAssistant": "Włącz asystenta AI",
-            "endpointOptional": "Punkt końcowy (opcjonalnie)",
-            "model": "Model",
-            "pasteYourApiKey": "Wklej klucz API",
             "perConversationCostCeilingUsd": "Pułap kosztu rozmowy (USD)",
-            "provider": "Dostawca",
-            "redactPiiFromMessagesToolOutput": "Redaguj informacje umożliwiające identyfikację z komunikatów i wyników narzędzi",
-            "selectAProvider": "Wybierz dostawcę…"
+            "redactPiiFromMessagesToolOutput": "Redaguj informacje umożliwiające identyfikację z komunikatów i wyników narzędzi"
         },
         "aboutTab": {
             "aModernLightweightServerManagementPanel": "Nowoczesny, lekki panel zarządzania serwerem umożliwiający zarządzanie aplikacjami internetowymi, bazami danych, domenami i nie tylko. Zbudowany z Flask i React.",

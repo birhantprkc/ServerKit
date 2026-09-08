@@ -90,7 +90,7 @@ marshmallow==3.26.2
 
 # AI assistant (core primitive — powered by Prompture)
 # Multi-provider LLM orchestration: Conversation, ToolRegistry, ask_live streaming,
-# ProviderEnvironment, guardrails. Provider SDKs (openai/anthropic/...) are optional
-# extras installed per the configured provider; the base package is provider-agnostic.
-# Installed from the Prompture repo (pip install -e path/to/prompture) until published.
-prompture>=1.4
+# ProviderEnvironment, guardrails. Native OpenAI and Anthropic SDKs ship with the
+# panel; compatible gateways use Prompture's raw-HTTP driver. Other SDKs remain
+# optional. Pin the tested descriptor, streaming, and conversation APIs.
+prompture[openai,anthropic]==1.11.0

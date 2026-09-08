@@ -9,6 +9,7 @@ Regenerate (backend/):
 - `DELETE /admin/users/{user_id}`
 - `DELETE /agent-plugins/installs/{install_id}`
 - `DELETE /agent-plugins/{plugin_id}`
+- `DELETE /ai/connections/{connection_id}`
 - `DELETE /ai/conversations/{conversation_id}`
 - `DELETE /api-keys/{key_id}`
 - `DELETE /apps/{app_id}`
@@ -137,6 +138,7 @@ Regenerate (backend/):
 - `GET /agent-plugins/spec`
 - `GET /agent-plugins/{plugin_id}`
 - `GET /agent-plugins/{plugin_id}/installations`
+- `GET /ai/connections`
 - `GET /ai/conversations`
 - `GET /ai/conversations/{conversation_id}`
 - `GET /ai/models`
@@ -748,6 +750,8 @@ Regenerate (backend/):
 - `POST /ai/chat/cancel`
 - `POST /ai/chat/confirm`
 - `POST /ai/chat/stream`
+- `POST /ai/connections`
+- `POST /ai/connections/probe`
 - `POST /ai/conversations`
 - `POST /ai/settings/test`
 - `POST /api-keys/`
@@ -1263,6 +1267,7 @@ Regenerate (backend/):
 - `PUT /admin/users/{user_id}/permissions`
 - `PUT /agent-plugins/installs/{install_id}/config`
 - `PUT /agent-plugins/{plugin_id}`
+- `PUT /ai/connections/{connection_id}`
 - `PUT /ai/settings`
 - `PUT /api-keys/{key_id}`
 - `PUT /apps/{app_id}`

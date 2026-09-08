@@ -18,9 +18,31 @@ Earlier development history remains in
 The [agent](https://github.com/jhd3197/serverkit-agent/releases) has its own
 release history; historical `agent-v*` tags are not panel releases.
 
-## [Unreleased]
+## [1.10.0] - 2026-09-08
 
-Changes after 1.9.28 on the development branch.
+### Added
+
+- Save named AI provider connections with encrypted credentials, a default
+  connection, and a connection/model selector for new chats. Existing chats
+  retain their original connection and model.
+- Discover Prompture providers and gateway models, including OmniRoute,
+  Prompture Hub and LM Studio, and test connections with a real chat request.
+- Use Prompture 1.11 native gateway streaming and tool calls while preserving
+  exact model IDs and routing aliases.
+
+### Fixed
+
+- Serve the runtime-extension vendor shims (`/serverkit-vendor/*.mjs`) as
+  `text/javascript` from the shipped nginx vhosts. Stock nginx has no `.mjs`
+  MIME entry and returned `application/octet-stream`, so every runtime-loaded
+  extension (WordPress, Git, Mail, Fail2ban, ...) failed with "Failed to fetch
+  dynamically imported module: blob:..." on fresh installs.
+- Exclude SQLite database files from the updater's install-tree snapshot so
+  the dedicated database backup does not duplicate them.
+
+[Source changes since 1.9.29](https://github.com/jhd3197/ServerKit/compare/v1.9.29...v1.10.0).
+
+## [1.9.29] - 2026-09-08
 
 ### Fixed
 
@@ -45,7 +67,7 @@ Changes after 1.9.28 on the development branch.
 - Close the container inspector when opening Logs or Exec so it can no longer
   cover those surfaces (PR #137).
 
-[Source changes since 1.9.28](https://github.com/jhd3197/ServerKit/compare/v1.9.28...dev).
+[Source changes since 1.9.28](https://github.com/jhd3197/ServerKit/compare/v1.9.28...v1.9.29).
 
 ## [1.9.28] - 2026-09-05
 
@@ -908,7 +930,8 @@ require their matching extensions. Review the installed extensions after updatin
 - Established the earliest published panel release covered by this backfill, with the Flask/React control panel, application and database management, Docker operations, backups and server monitoring.
 - Moved the agent into the separate serverkit-agent repository and introduced a dedicated panel release workflow.
 
-[Unreleased]: https://github.com/jhd3197/ServerKit/compare/v1.9.28...dev
+[1.10.0]: https://github.com/jhd3197/ServerKit/releases/tag/v1.10.0
+[1.9.29]: https://github.com/jhd3197/ServerKit/releases/tag/v1.9.29
 [1.9.28]: https://github.com/jhd3197/ServerKit/releases/tag/v1.9.28
 [1.9.25]: https://github.com/jhd3197/ServerKit/releases/tag/v1.9.25
 [1.9.24]: https://github.com/jhd3197/ServerKit/releases/tag/v1.9.24

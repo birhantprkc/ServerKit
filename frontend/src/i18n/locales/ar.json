@@ -3,19 +3,11 @@
         "aISettingsTab": {
             "adminAccessRequired": "مطلوب وصول المشرف.",
             "aiAssistant": "مساعد الذكاء الاصطناعي",
-            "apiKey": "مفتاح API",
             "blockPromptInjectionAttempts": "منع محاولات الحقن السريع",
             "configureTheInPanelAssistantPowered": "قم بتكوين المساعد الموجود داخل اللوحة - المدعوم من Prompture. يتم تخزين مفتاح API بشكل مشفر ولا يتم إعادته مطلقًا بواسطة API.",
-            "configuredLeaveBlankToKeep": "تم التهيئة ✓ (اتركه فارغًا للاحتفاظ به)",
-            "eGGpt4o": "على سبيل المثال gpt-4o",
             "enableAiAssistant": "تمكين مساعد الذكاء الاصطناعي",
-            "endpointOptional": "نقطة النهاية (اختياري)",
-            "model": "نموذج",
-            "pasteYourApiKey": "الصق مفتاح API",
             "perConversationCostCeilingUsd": "سقف التكلفة لكل محادثة (بالدولار الأمريكي)",
-            "provider": "مزود",
-            "redactPiiFromMessagesToolOutput": "قم بتنقيح معلومات تحديد الهوية الشخصية (PII) من الرسائل ومخرجات الأداة",
-            "selectAProvider": "اختر مزود…"
+            "redactPiiFromMessagesToolOutput": "قم بتنقيح معلومات تحديد الهوية الشخصية (PII) من الرسائل ومخرجات الأداة"
         },
         "aboutTab": {
             "aModernLightweightServerManagementPanel": "لوحة إدارة خادم حديثة وخفيفة الوزن لإدارة تطبيقات الويب وقواعد البيانات والمجالات والمزيد. تم تصميمه باستخدام Flask وReact.",

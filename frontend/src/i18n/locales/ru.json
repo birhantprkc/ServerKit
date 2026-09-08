@@ -3,19 +3,11 @@
         "aISettingsTab": {
             "adminAccessRequired": "Требуется доступ администратора.",
             "aiAssistant": "ИИ-помощник",
-            "apiKey": "API-ключ",
             "blockPromptInjectionAttempts": "Блокировать попытки быстрого внедрения",
             "configureTheInPanelAssistantPowered": "Настройте встроенного в панель помощника на базе Prompture. Ключ API хранится в зашифрованном виде и никогда не возвращается API.",
-            "configuredLeaveBlankToKeep": "Настроено ✓ (оставьте пустым, чтобы сохранить)",
-            "eGGpt4o": "например gpt-4o",
             "enableAiAssistant": "Включить AI-помощника",
-            "endpointOptional": "Конечная точка (необязательно)",
-            "model": "Модель",
-            "pasteYourApiKey": "Вставьте свой ключ API",
             "perConversationCostCeilingUsd": "Максимальная стоимость разговора (долл. США)",
-            "provider": "Поставщик",
-            "redactPiiFromMessagesToolOutput": "Удаление личных данных из сообщений и выходных данных инструмента",
-            "selectAProvider": "Выберите провайдера…"
+            "redactPiiFromMessagesToolOutput": "Удаление личных данных из сообщений и выходных данных инструмента"
         },
         "aboutTab": {
             "aModernLightweightServerManagementPanel": "Современная, легкая панель управления сервером для управления веб-приложениями, базами данных, доменами и многим другим. Создан с помощью Flask и React.",

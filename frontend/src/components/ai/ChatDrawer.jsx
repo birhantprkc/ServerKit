@@ -7,6 +7,7 @@ import DrawerHeader from './DrawerHeader';
 import ContextChip from './ContextChip';
 import MessageList from './MessageList';
 import Composer from './Composer';
+import ConnectionSelector from './ConnectionSelector';
 import ShellDockTabs from '../ShellDockTabs';
 import { useTranslation } from 'react-i18next';
 
@@ -70,6 +71,7 @@ const ChatDrawer = () => {
                     <ShellDockTabs expandable={false} />
                 </div>
                 <DrawerHeader />
+                <ConnectionSelector />
                 <ContextChip />
                 <MessageList />
                 <Composer />
