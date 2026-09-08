@@ -51,7 +51,7 @@ def test_connection_catalog_supports_api_key_clients_without_secrets(app, client
     headers = {'X-API-Key': key}
     response = client.get('/api/v1/ai/connections', headers=headers)
     assert response.status_code == 200
-    assert set(response.get_json()['connections'][0]) == {'id', 'name', 'provider', 'model'}
+    assert set(response.get_json()['connections'][0]) == {'id', 'name', 'provider', 'model', 'model_catalog'}
     assert 'private-test-key' not in response.get_data(as_text=True)
     assert client.post('/api/v1/ai/connections', json=draft(), headers=headers).status_code == 403
 
@@ -95,7 +95,7 @@ def test_profile_storage_and_api_never_return_secrets(app, client, auth_headers)
         body = client.get(path, headers=auth_headers).get_data(as_text=True)
         assert 'private-test-key' not in body
     selector = client.get('/api/v1/ai/connections', headers=auth_headers).get_json()['connections'][0]
-    assert set(selector) == {'id', 'name', 'provider', 'model'}
+    assert set(selector) == {'id', 'name', 'provider', 'model', 'model_catalog'}
 
 
 def test_secret_retention_clear_and_endpoint_change(app):
@@ -274,6 +274,42 @@ def test_resume_restores_history_with_original_connection_not_ambient(app, monke
         assert calls == [(first.id, 'auto', 'private-test-key')] * 2
         assert resumed._fallback_models is None
         assert 'private-test-key' not in json.dumps(resumed.export())
+
+
+@pytest.mark.parametrize('streaming', [False, True])
+@pytest.mark.parametrize('resume', [False, True])
+def test_cost_limit_stops_driver_calls_in_fresh_and_resumed_chats(app, monkeypatch, streaming, resume):
+    from prompture.drivers.base import Driver
+    from prompture.exceptions import BudgetExceededError
+
+    class NoCallDriver(Driver):
+        def generate(self, prompt, options):
+            pytest.fail('A conversation at its cost limit must not call a provider')
+
+    monkeypatch.setattr(ai_service, 'build_tool_registry', lambda *a: None)
+    monkeypatch.setattr(ai_service, 'build_system_prompt', lambda *a, **kw: 'Policy')
+    monkeypatch.setattr(ai_service, '_maybe_redact_result', lambda data: data)
+    monkeypatch.setattr(service, 'build_driver', lambda *a: NoCallDriver())
+    with app.app_context():
+        SystemSettings.set('ai_max_cost_usd', '0.5')
+        connection = service.save(draft())
+        row = SimpleNamespace(id='budget-chat', connection_id=connection.id,
+                              model_name='openai_compatible/auto', export=None)
+        conv = ai_service.build_conversation(row, None, 'simple', {}, None)
+        conv._usage['cost'] = 0.5
+        if resume:
+            row.export = conv.export()
+            conv = ai_service.build_conversation(row, None, 'simple', {}, None)
+        with pytest.raises(BudgetExceededError):
+            if streaming:
+                list(conv.ask_live('Continue'))
+            else:
+                conv.ask('Continue')
+        assert conv.budget_remaining['exceeded'] is True
+        # Removing the ceiling must also apply when resuming saved policy.
+        row.export = conv.export()
+        SystemSettings.set('ai_max_cost_usd', '0')
+        assert ai_service.build_conversation(row, None, 'simple', {}, None).budget_remaining is None
 
 
 def test_migration_preserves_legacy_key_and_conversation(app):

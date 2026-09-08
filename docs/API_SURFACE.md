@@ -141,11 +141,13 @@ Regenerate (backend/):
 - `GET /ai/connections`
 - `GET /ai/conversations`
 - `GET /ai/conversations/{conversation_id}`
+- `GET /ai/management`
 - `GET /ai/models`
 - `GET /ai/providers`
 - `GET /ai/settings`
 - `GET /ai/status`
 - `GET /ai/tools`
+- `GET /ai/usage`
 - `GET /api-analytics/endpoints`
 - `GET /api-analytics/errors`
 - `GET /api-analytics/keys/{key_id}/usage`
@@ -753,6 +755,7 @@ Regenerate (backend/):
 - `POST /ai/connections`
 - `POST /ai/connections/probe`
 - `POST /ai/conversations`
+- `POST /ai/management/preview`
 - `POST /ai/settings/test`
 - `POST /api-keys/`
 - `POST /api-keys/{key_id}/rotate`
@@ -1268,6 +1271,7 @@ Regenerate (backend/):
 - `PUT /agent-plugins/installs/{install_id}/config`
 - `PUT /agent-plugins/{plugin_id}`
 - `PUT /ai/connections/{connection_id}`
+- `PUT /ai/management`
 - `PUT /ai/settings`
 - `PUT /api-keys/{key_id}`
 - `PUT /apps/{app_id}`

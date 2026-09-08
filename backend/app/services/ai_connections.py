@@ -94,6 +94,7 @@ def provider_meta(provider):
 
 def public_connection(row, *, details=False):
     data = {'id': row.id, 'name': row.name, 'provider': row.provider, 'model': row.model}
+    data['model_catalog'] = row.model_catalog
     if details:
         config = row.config
         data['config'] = {k: v for k, v in config.items() if not is_secret(k)}
@@ -118,7 +119,10 @@ def require_connection(connection_id):
 
 
 def delete_connection(connection_id):
+    from app.services.ai_management import references
     row = require_connection(connection_id)
+    if references(connection_id):
+        raise ConflictError('Remove this connection from task models, routing, and fallback before deleting it.')
     if row.conversations or default_id() == row.id:
         raise ConflictError('Choose another default and delete conversations using this connection before removing it.')
     db.session.delete(row)
@@ -222,6 +226,8 @@ def save(data, existing=None):
         if existing.provider != draft['provider'] or any(
                 (before.get(f['name']) or f['default']).rstrip('/') != draft['config'].get(f['name'], '') for f in urls):
             raise ValueError('This connection has conversations. Add a new connection to change its provider or endpoint.')
+    if existing and (existing.provider != draft['provider'] or existing.config != draft['config']):
+        row.model_catalog = []
     for key in ('name', 'provider', 'model', 'config'):
         setattr(row, key, draft[key])
     db.session.add(row)
@@ -320,7 +326,15 @@ def probe(data, existing=None, *, test=False):
             if draft['model'] not in models:
                 raise ValueError('Model was not returned by this provider. Check the model ID or verify it in chat.')
             return {'ok': True, 'message': 'Model discovery succeeded. Streaming and tool support depend on the selected model.'}
-        return {'models': models, 'source': 'live'}
+        from app.services.ai_management import model_info
+        from types import SimpleNamespace
+        details = [model_info(SimpleNamespace(provider=provider), model) for model in models]
+        # Cache only an exact saved destination's catalog; a draft endpoint must
+        # not replace another connection's verified discovery results.
+        if existing and existing.provider == provider and existing.config == config:
+            existing.model_catalog = details
+            db.session.commit()
+        return {'models': models, 'source': 'live', 'model_details': details}
     except requests.HTTPError as exc:
         code = exc.response.status_code if exc.response is not None else 'error'
         raise ValueError(f'Provider returned HTTP {code}. Check credentials, endpoint and model.') from None

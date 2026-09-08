@@ -17,7 +17,7 @@ const routeMatches = (pattern, route) => {
 const MessageList = () => {
     const { t } = useTranslation();
     const {
-        messages, isStreaming, pageContext, mode, ask, providerConfigured, pendingConfirm,
+        messages, isStreaming, pageContext, mode, ask, enabled, providerConfigured, pendingConfirm,
     } = useServerkitAI();
     const contributions = useContributions();
     const { ref, isPinned, checkPinned, scrollToBottom } = useAutoScroll([messages, isStreaming]);
@@ -46,7 +46,7 @@ const MessageList = () => {
                     <p className="sk-ai-empty__sub">{t('app.messageList.askAboutThisPage', 'Ask about this page, or anything on this server.')}</p>
                     {!providerConfigured ? (
                         <p className="sk-ai-empty__hint">
-                            {t('app.messageList.theAssistantIsnTConfiguredYet', 'The assistant isn\'t configured yet. An admin can set a provider in')}
+                            {!enabled ? t('ai.settings.disabledHelp', 'The assistant is disabled. An admin can enable it in') : t('app.messageList.theAssistantIsnTConfiguredYet', 'The assistant isn\'t configured yet. An admin can set a provider in')}
                             {' '}{t('app.messageList.settingsAiAssistant', 'Settings → AI Assistant.')}
                         </p>
                     ) : (

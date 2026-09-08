@@ -198,6 +198,7 @@ def test_enabled_protection_failure_never_returns_original(monkeypatch):
 @pytest.mark.parametrize('route', ['/chat', '/chat/stream'])
 def test_chat_bounds_and_visible_protection_failure(client, auth_headers, monkeypatch, route):
     monkeypatch.setattr(ai_service, 'ensure_initialized', lambda: None)
+    monkeypatch.setattr(ai_service, 'is_enabled', lambda: True)
     monkeypatch.setattr(ai_service, 'is_configured', lambda: True)
     path = '/api/v1/ai' + route
     invalid = client.post(path, headers=auth_headers, json={'message': 42})
@@ -218,6 +219,7 @@ def test_chat_bounds_and_visible_protection_failure(client, auth_headers, monkey
 def test_chat_busy_uses_typed_http_error(client, auth_headers, monkeypatch, route):
     from app.api import ai
     monkeypatch.setattr(ai_service, 'ensure_initialized', lambda: None)
+    monkeypatch.setattr(ai_service, 'is_enabled', lambda: True)
     monkeypatch.setattr(ai_service, 'is_configured', lambda: True)
     monkeypatch.setattr(ai_service, 'injection_flagged', lambda text: False)
     monkeypatch.setattr(ai_service, 'redact_input', lambda text: text)
@@ -303,6 +305,7 @@ def test_disconnecting_at_open_cancels_stream_and_releases_slot(client, auth_hea
 
     monkeypatch.setattr(ai, '_release_turn', release)
     monkeypatch.setattr(ai_service, 'ensure_initialized', lambda: None)
+    monkeypatch.setattr(ai_service, 'is_enabled', lambda: True)
     monkeypatch.setattr(ai_service, 'is_configured', lambda: True)
     monkeypatch.setattr(ai_service, 'injection_flagged', lambda message: False)
     monkeypatch.setattr(ai_service, 'redact_input', lambda message: message)
@@ -334,3 +337,55 @@ def test_read_exception_does_not_leak_credentials_to_model(app, no_pii):
             raise RuntimeError('Cannot connect to mysql://root:secret@host/db')
         result = ai_service._make_read_wrapper(descriptor(broken), user)()
         assert result == 'The tool failed to retrieve data.'
+
+
+@pytest.mark.parametrize('route', ['/chat', '/chat/stream'])
+def test_disabled_assistant_blocks_new_turns(client, auth_headers, monkeypatch, route):
+    monkeypatch.setattr(ai_service, 'is_enabled', lambda: False)
+    monkeypatch.setattr(ai_service, 'is_configured', lambda: True)
+    def unexpected_init():
+        pytest.fail('Disabled chat must not initialize a provider or run tools')
+    monkeypatch.setattr(ai_service, 'ensure_initialized', unexpected_init)
+    response = client.post('/api/v1/ai' + route, headers=auth_headers, json={'message': 'hello'})
+    assert response.status_code == 503
+    assert 'disabled' in response.json['error']
+
+
+@pytest.mark.parametrize('route', ['/chat', '/chat/stream'])
+def test_budget_stop_is_clear_and_preserves_spend(client, auth_headers, monkeypatch, route):
+    from prompture.exceptions import BudgetExceededError
+    saved = []
+
+    class BudgetConversation:
+        usage = {'cost': 0.5, 'total_tokens': 100}
+
+        def ask(self, message):
+            raise BudgetExceededError('Internal provider details must not be returned')
+
+        def ask_live(self, message):
+            raise BudgetExceededError('Internal provider details must not be returned')
+            yield  # The real streaming SDK raises while iterating.
+
+    monkeypatch.setattr(ai_service, 'ensure_initialized', lambda: None)
+    monkeypatch.setattr(ai_service, 'is_enabled', lambda: True)
+    monkeypatch.setattr(ai_service, 'is_configured', lambda: True)
+    monkeypatch.setattr(ai_service, 'injection_flagged', lambda message: False)
+    monkeypatch.setattr(ai_service, 'redact_input', lambda message: message)
+    monkeypatch.setattr(ai_service, 'build_conversation', lambda *a, **kw: BudgetConversation())
+    monkeypatch.setattr(ai_service, 'persist_conversation', lambda row, conv, **kw: saved.append(conv.usage))
+    response = client.post('/api/v1/ai' + route, headers=auth_headers,
+                           json={'message': 'Continue'}, buffered=True)
+    assert response.status_code == (200 if route.endswith('stream') else 409)
+    body = response.get_data(as_text=True)
+    assert 'ai_budget_exceeded' in body and 'cost limit' in body
+    assert 'Internal provider' not in body
+    assert saved == [{'cost': 0.5, 'total_tokens': 100}]
+    if route.endswith('stream'):
+        assert 'event: done' in body
+
+
+@pytest.mark.parametrize('value', [-1, 'NaN', 'Infinity', '', None, True])
+def test_invalid_cost_limit_cannot_be_saved(client, auth_headers, value):
+    response = client.put('/api/v1/ai/settings', headers=auth_headers,
+                          json={'max_cost_usd': value})
+    assert response.status_code == 400

@@ -20,7 +20,6 @@ import ApiSettingsTab from '../components/settings/ApiSettingsTab';
 import MigrationHistoryTab from '../components/settings/MigrationHistoryTab';
 import IconReferenceTab from '../components/settings/IconReferenceTab';
 import AISettingsTab from '../components/settings/AISettingsTab';
-import ModulesTab from '../components/settings/ModulesTab';
 import WebhooksTab from '../components/settings/WebhooksTab';
 import AboutTab from '../components/settings/AboutTab';
 import PluginSlot from '../components/PluginSlot';
@@ -28,15 +27,15 @@ import { Activity, Code, Database, Layers, Link2, PaintBucket, Sparkles, Trash2,
 import { Button } from '@/components/ui/button';
 import { SegControl } from '@/components/ds';
 import PageLayout from '../layouts/PageLayout';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
-const VALID_TABS = ['profile', 'security', 'connections', 'appearance', 'sidebar', 'whitelabel', 'notifications', 'system', 'users', 'activity', 'site', 'sso', 'api', 'webhooks', 'ai', 'modules', 'migrations', 'recyclebin', 'developer', 'about'];
+const VALID_TABS = ['profile', 'security', 'connections', 'appearance', 'sidebar', 'whitelabel', 'notifications', 'system', 'users', 'activity', 'site', 'sso', 'api', 'webhooks', 'ai', 'migrations', 'recyclebin', 'developer', 'about'];
 
 // Tabs that belong to the server-wide "Administration" group (admin-only); the
 // rest are personal "My Account" settings. Drives the two-way section switch so
 // personal prefs aren't interleaved with destructive system controls.
-const ADMIN_TABS = ['users', 'activity', 'site', 'connections', 'sso', 'api', 'webhooks', 'ai', 'modules', 'migrations', 'recyclebin', 'system', 'developer'];
+const ADMIN_TABS = ['users', 'activity', 'site', 'connections', 'sso', 'api', 'webhooks', 'ai', 'migrations', 'recyclebin', 'system', 'developer'];
 
 const Settings = () => {
     const { t } = useTranslation();
@@ -44,10 +43,15 @@ const Settings = () => {
     const { isAdmin } = useAuth();
     const [devMode, setDevMode] = useState(false);
     const navigate = useNavigate();
+    const { tab: requestedTab } = useParams();
 
     // Which top-level settings group is showing. Derived from the active tab so
     // deep links (e.g. /settings/users) open the right group; non-admins only
     // ever see "My Account", so any admin tab collapses back to it for them.
+    useEffect(() => {
+        if (requestedTab === 'modules') navigate('/marketplace', { replace: true });
+    }, [requestedTab, navigate]);
+
     const activeGroup = isAdmin && ADMIN_TABS.includes(activeTab) ? 'admin' : 'account';
 
     useEffect(() => {
@@ -266,14 +270,6 @@ const Settings = () => {
                             </Button>
                             <Button
                                 variant="ghost"
-                                className={`settings-nav-item ${activeTab === 'modules' ? 'active' : ''}`}
-                                onClick={() => setActiveTab('modules')}
-                            >
-                                <Layers size={18} />
-                                {t('app.settings.modules', 'Modules')}
-                            </Button>
-                            <Button
-                                variant="ghost"
                                 className={`settings-nav-item ${activeTab === 'migrations' ? 'active' : ''}`}
                                 onClick={() => setActiveTab('migrations')}
                             >
@@ -339,7 +335,6 @@ const Settings = () => {
                     {activeTab === 'api' && isAdmin && <ApiSettingsTab />}
                     {activeTab === 'webhooks' && isAdmin && <WebhooksTab />}
                     {activeTab === 'ai' && isAdmin && <AISettingsTab />}
-                    {activeTab === 'modules' && isAdmin && <ModulesTab />}
                     {activeTab === 'migrations' && isAdmin && <MigrationHistoryTab />}
                     {activeTab === 'system' && isAdmin && <SystemTab />}
                     {activeTab === 'developer' && devMode && isAdmin && <IconReferenceTab />}

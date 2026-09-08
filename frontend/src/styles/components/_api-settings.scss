@@ -6,6 +6,10 @@
     display: flex;
     flex-direction: column;
     gap: $space-6;
+
+    .settings-card__header { align-items: center; flex-wrap: wrap; }
+    .api-settings__revoke { color: $danger; }
+    .stat-strip__item { background: $bg-body; }
 }
 
 // ─── Tables ────────────────────────────────────────────

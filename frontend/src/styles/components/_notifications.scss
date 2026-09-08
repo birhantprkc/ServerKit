@@ -2,50 +2,6 @@
 // NOTIFICATION SETTINGS STYLES
 // ============================================
 
-// Notification Tabs
-.notification-tabs {
-    display: flex;
-    gap: $space-2;
-    margin-bottom: $space-6;
-    padding-bottom: $space-4;
-    border-bottom: 1px solid $border-subtle;
-}
-
-.notification-tab {
-    display: flex;
-    align-items: center;
-    gap: $space-2;
-    padding: $space-3 $space-4;
-    background: transparent;
-    border: 1px solid $border-subtle;
-    border-radius: $radius-md;
-    color: $text-secondary;
-    font-size: $font-size-sm;
-    font-weight: $font-weight-medium;
-    cursor: pointer;
-    transition: all $transition-fast;
-
-    svg {
-        stroke-width: 2;
-    }
-
-    &:hover {
-        background: $bg-hover;
-        border-color: $border-default;
-        color: $text-primary;
-    }
-
-    &.active {
-        background: $accent-glow;
-        border-color: $accent-primary;
-        color: $accent-primary;
-
-        svg {
-            stroke: $accent-primary;
-        }
-    }
-}
-
 // User Notification Preferences
 .user-notification-prefs {
     display: flex;
@@ -79,46 +35,31 @@
 }
 
 .channel-toggles,
-.category-toggles {
-    display: flex;
-    flex-wrap: wrap;
+.category-toggles,
+.severity-toggles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
     gap: $space-3;
 }
 
 .channel-toggle,
-.category-toggle {
+.category-toggle,
+.severity-toggle {
     display: flex;
     align-items: center;
-    gap: $space-2;
-    padding: $space-2 $space-3;
+    gap: $space-3;
+    padding: $space-3;
     background: $bg-card;
-    border: 1px solid $border-subtle;
+    border: 1px solid $border-default;
     border-radius: $radius-md;
     cursor: pointer;
-    transition: all $transition-fast;
+    color: $text-primary;
+    font-size: $font-size-sm;
 
-    input[type="checkbox"] {
-        accent-color: $accent-primary;
-    }
-
-    span {
-        font-size: $font-size-sm;
-        color: $text-secondary;
-    }
-
-    &:hover {
-        background: $bg-hover;
-        border-color: $border-default;
-    }
-
-    &:has(input:checked) {
-        background: $accent-glow;
-        border-color: fade($accent-primary-raw, 40%);
-
-        span {
-            color: $text-primary;
-        }
-    }
+    .form-group & { display: flex; margin-bottom: 0; color: $text-primary; }
+    > span { flex: 1; order: -1; }
+    &:hover { background: $bg-hover; }
+    &:focus-within { border-color: $accent-primary; }
 }
 
 .notification-channels {
@@ -140,6 +81,7 @@
 }
 
 .channel-header {
+    @include focus-ring();
     display: flex;
     align-items: center;
     gap: $space-4;
@@ -205,7 +147,7 @@
 .channel-config {
     padding: $space-6;
     border-top: 1px solid $border-subtle;
-    background: $bg-body;
+    background: $bg-card;
 }
 
 .toggle-switch-label {
@@ -215,65 +157,6 @@
 
     span {
         font-weight: 500;
-    }
-}
-
-.severity-toggles {
-    display: flex;
-    flex-wrap: wrap;
-    gap: $space-2;
-}
-
-.severity-toggle {
-    display: flex;
-    align-items: center;
-    gap: $space-1;
-    padding: $space-1 $space-2;
-    border-radius: $radius-sm;
-    background: $bg-hover;
-    cursor: pointer;
-    transition: all 0.2s;
-    font-size: $font-size-sm;
-
-    input {
-        display: none;
-    }
-
-    span {
-        padding: 2px $space-1;
-        border-radius: $radius-sm;
-    }
-
-    &.critical span {
-        background: fade($danger-raw, 20%);
-        color: $danger;
-    }
-
-    &.warning span {
-        background: fade($warning-raw, 20%);
-        color: $warning;
-    }
-
-    &.info span {
-        background: fade($accent-primary-raw, 20%);
-        color: $accent-primary;
-    }
-
-    &.success span {
-        background: fade($success-raw, 20%);
-        color: $success;
-    }
-
-    input:checked + span {
-        font-weight: 600;
-    }
-
-    &:has(input:not(:checked)) {
-        opacity: 0.5;
-    }
-
-    &:hover {
-        opacity: 1;
     }
 }
 

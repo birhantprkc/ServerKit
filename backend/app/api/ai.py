@@ -42,7 +42,8 @@ from app.services.ai_attachment_registry import (
 )
 from app.services.ai_tool_registry import ai_tool_registry
 from app.error_reporting import unexpected_response
-from app.exceptions import DependencyUnavailableError, ValidationError
+from app.exceptions import ApplicationError, DependencyUnavailableError, ValidationError
+from app.services import ai_management, ai_usage, ai_runtime
 
 logger = logging.getLogger(__name__)
 ai_bp = Blueprint('ai', __name__)
@@ -88,6 +89,10 @@ def _validate_chat_data(data):
         return 'page_context must be a small object'
     if data.get('mode', 'assistant') not in ('assistant', 'simple'):
         return 'Invalid assistant mode'
+    if data.get('profile') is not None and data['profile'] not in ai_management.PROFILES:
+        return 'Invalid model role'
+    if not isinstance(data.get('workflow', 'chat'), str) or data.get('workflow', 'chat') not in ai_management.WORKFLOWS:
+        return 'Invalid task'
 
 
 # ---------------------------------------------------------------------------
@@ -105,15 +110,21 @@ def _owned_conversation(conversation_id: str, user):
     return row
 
 
-def _load_or_create(conversation_id, user, mode, connection_id=None, model=None):
+def _load_or_create(conversation_id, user, mode, connection_id=None, model=None, *, profile=None, workflow='chat', message=''):
     if conversation_id:
         row = _owned_conversation(conversation_id, user)
         return row  # may be None -> caller 404s
     connection = None
+    selection = {}
     if connection_id is not None and (not isinstance(connection_id, str) or len(connection_id) > 64):
         raise ValidationError('Invalid connection ID')
     if connection_id or ai_connections.default_id():
-        connection = ai_connections.get_connection(connection_id)
+        selection = ai_management.resolve(profile=profile, workflow=workflow,
+                                          connection_id=connection_id, model=model, message=message)
+        connection = ai_connections.get_connection(selection['connection_id'])
+        model = selection['model']
+    elif workflow != 'chat' or profile:
+        raise ValidationError('Save a provider connection before choosing task models.')
     if model is not None and (not isinstance(model, str) or not model.strip() or len(model) > 256):
         raise ValidationError('Invalid model ID')
     row = AiConversation(
@@ -122,6 +133,8 @@ def _load_or_create(conversation_id, user, mode, connection_id=None, model=None)
         model_name=ai_connections.model_name(connection, model) if connection else ai_service.current_model_name(),
         connection_id=connection.id if connection else None,
     )
+    selection['workspace_id'] = ai_management.workspace_id(user, request.headers.get('X-Workspace-Id'))
+    row.management = selection
     db.session.add(row)
     db.session.commit()
     return row
@@ -150,7 +163,37 @@ def status():
         'mode_default': AiConversation.MODE_ASSISTANT,
         'pii_redaction': bool(ai_service._setting('ai_pii_redaction', True)),
         'injection_detection': bool(ai_service._setting('ai_injection_detection', True)),
+        'management': ai_management.public_profiles(),
     })
+
+
+@ai_bp.route('/management', methods=['GET'])
+@admin_required
+def get_management():
+    return jsonify(ai_management.settings())
+
+
+@ai_bp.route('/management', methods=['PUT'])
+@admin_required
+def update_management():
+    return jsonify(ai_management.save(request.get_json(silent=True)))
+
+
+@ai_bp.route('/management/preview', methods=['POST'])
+@admin_required
+def preview_management():
+    data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict) or not isinstance(data.get('message', ''), str) or len(data.get('message', '')) > MAX_MESSAGE_CHARS:
+        raise ValidationError('Enter a task of at most 16000 characters.')
+    config = ai_management.validate(data['config']) if 'config' in data else None
+    return jsonify(ai_management.resolve(profile=data.get('profile'), workflow=data.get('workflow', 'chat'),
+                                         message=data.get('message', ''), config=config))
+
+
+@ai_bp.route('/usage', methods=['GET'])
+@admin_required
+def get_ai_usage():
+    return jsonify(ai_usage.report(request.args))
 
 
 @ai_bp.route('/settings', methods=['GET'])
@@ -163,7 +206,6 @@ def get_settings():
         'model': SettingsService.get('ai_model', ''),
         'endpoint': SettingsService.get('ai_endpoint', ''),
         'max_cost_usd': SettingsService.get('ai_max_cost_usd', 0.5),
-        'fallback_models': SettingsService.get('ai_fallback_models', []),
         'pii_redaction': bool(SettingsService.get('ai_pii_redaction', True)),
         'injection_detection': bool(SettingsService.get('ai_injection_detection', True)),
         # Never return the key itself — only whether one is configured.
@@ -183,6 +225,23 @@ def update_settings():
     user = get_current_user()
     uid = user.id if user else None
 
+    if not isinstance(data, dict):
+        raise ValidationError('AI settings must be an object.')
+    if 'fallback_models' in data:
+        raise ValidationError('Configure connection-bound fallbacks in AI management settings.')
+    for field in ('enabled', 'pii_redaction', 'injection_detection'):
+        if field in data and not isinstance(data[field], bool):
+            raise ValidationError(f'{field} must be a boolean.')
+
+    if 'max_cost_usd' in data:
+        import math
+        try:
+            cost = float(data['max_cost_usd'])
+        except (TypeError, ValueError):
+            raise ValidationError('Cost limit must be a finite number of zero or more.')
+        if isinstance(data['max_cost_usd'], bool) or not math.isfinite(cost) or cost < 0:
+            raise ValidationError('Cost limit must be a finite number of zero or more.')
+
     field_map = {
         'enabled': ('ai_enabled', bool),
         'provider': ('ai_provider', str),
@@ -195,9 +254,6 @@ def update_settings():
     for field, (key, caster) in field_map.items():
         if field in data:
             SettingsService.set(key, caster(data[field]), user_id=uid)
-    if 'fallback_models' in data and isinstance(data['fallback_models'], list):
-        SettingsService.set('ai_fallback_models', data['fallback_models'], user_id=uid)
-
     # API key: encrypt and store; empty string clears it.
     if 'api_key' in data:
         raw = (data['api_key'] or '').strip()
@@ -336,7 +392,8 @@ def create_conversation():
     data = request.get_json(silent=True) or {}
     mode = data.get('mode') or AiConversation.MODE_ASSISTANT
     try:
-        row = _load_or_create(None, user, mode, data.get('connection_id'), data.get('model'))
+        row = _load_or_create(None, user, mode, data.get('connection_id'), data.get('model'),
+                              profile=data.get('profile'), workflow=data.get('workflow', 'chat'))
     except ValueError as exc:
         return jsonify({'error': str(exc)}), 400
     row.title = data.get('title')
@@ -391,6 +448,8 @@ def delete_conversation(conversation_id):
 @ai_bp.route('/chat', methods=['POST'])
 @jwt_required()
 def chat():
+    if not ai_service.is_enabled():
+        return jsonify({'error': 'AI assistant is disabled. Enable it in Settings > AI Assistant.'}), 503
     ai_service.ensure_initialized()
     user = get_current_user()
     if not ai_service.is_configured():
@@ -409,7 +468,8 @@ def chat():
     attachment_refs = _attachment_references(data)
 
     try:
-        row = _load_or_create(data.get('conversation_id'), user, mode, data.get('connection_id'), data.get('model'))
+        row = _load_or_create(data.get('conversation_id'), user, mode, data.get('connection_id'), data.get('model'),
+                              profile=data.get('profile'), workflow=data.get('workflow', 'chat'), message=message)
     except ValueError as exc:
         return jsonify({'error': str(exc)}), 400
     if row is None:
@@ -432,25 +492,39 @@ def chat():
 
 def _run_chat(row, user, mode, page_context, attachment_refs, message, safe_message):
     attachment_result = resolve_attachments(user, attachment_refs)
+    recorder = ai_usage.start(row, user)
     _persist_user_message(row, message, attachments=attachment_result['manifest'])
+    conv = None
     try:
         # gate=None: write tools refuse (no interactive confirmation in this mode).
         conv = ai_service.build_conversation(
             row, user, mode, page_context, gate=None,
             attachment_context=attachment_result['context'],
+            recorder=recorder,
         )
-        reply = conv.ask(safe_message)
+        reply = ai_runtime.ask(conv, safe_message, row.management.get('workflow', 'chat'))
     except ai_service.AIProtectionError as exc:
+        recorder.finish('error', conv)
+        if conv is not None:
+            ai_service.persist_conversation(row, conv, page_context=page_context)
         raise DependencyUnavailableError(str(exc)) from exc
     except Exception as exc:  # noqa: BLE001 - reported, not swallowed
+        budget_message = ai_service.budget_error_message(exc)
+        usage = recorder.finish('budget_exceeded' if budget_message else 'error', conv)
+        if conv is not None:
+            ai_service.persist_conversation(row, conv, page_context=page_context)
+        if budget_message:
+            return jsonify({'error': budget_message, 'code': 'ai_budget_exceeded',
+                            'conversation_id': row.id, 'usage': usage}), 409
         return unexpected_response(exc)
 
-    _persist_assistant_message(row, reply, tool_calls=[], usage=conv.usage)
+    usage = recorder.finish('success', conv)
+    _persist_assistant_message(row, reply, tool_calls=[], usage=usage)
     ai_service.persist_conversation(row, conv, page_context=page_context)
     return jsonify({
         'conversation_id': row.id,
         'reply': reply,
-        'usage': conv.usage,
+        'usage': usage,
         'attachment_warnings': attachment_result['warnings'],
     })
 
@@ -461,6 +535,8 @@ def _run_chat(row, user, mode, page_context, attachment_refs, message, safe_mess
 @ai_bp.route('/chat/stream', methods=['POST'])
 @jwt_required()
 def chat_stream():
+    if not ai_service.is_enabled():
+        return jsonify({'error': 'AI assistant is disabled. Enable it in Settings > AI Assistant.'}), 503
     ai_service.ensure_initialized()
     user = get_current_user()
     if not ai_service.is_configured():
@@ -479,7 +555,8 @@ def chat_stream():
     attachment_refs = _attachment_references(data)
 
     try:
-        row = _load_or_create(data.get('conversation_id'), user, mode, data.get('connection_id'), data.get('model'))
+        row = _load_or_create(data.get('conversation_id'), user, mode, data.get('connection_id'), data.get('model'),
+                              profile=data.get('profile'), workflow=data.get('workflow', 'chat'), message=message)
     except ValueError as exc:
         return jsonify({'error': str(exc)}), 400
     if row is None:
@@ -530,6 +607,8 @@ def chat_stream():
             tool_order: list[str] = []
             last_usage: dict = {}
             conv = None
+            recorder = None
+            outcome = 'success'
             try:
                 if flagged:
                     emit('error', {'message': 'Your message was flagged by the prompt-injection guardrail.'})
@@ -541,11 +620,14 @@ def chat_stream():
                 if conv_user is None or conv_row is None:
                     emit('error', {'message': 'Your session is no longer authorized.'})
                     return
+                recorder = ai_usage.start(conv_row, conv_user)
+                emit('run_start', {'run_id': recorder.run.id, **conv_row.management, 'model': conv_row.model_name})
                 conv = ai_service.build_conversation(
                     conv_row, conv_user, mode, page_context, gate,
                     attachment_context=attachment_result['context'],
+                    recorder=recorder,
                 )
-                for event in conv.ask_live(safe_message):
+                for event in ai_runtime.ask_live(conv, safe_message, conv_row.management.get('workflow', 'chat')):
                     if cancel_event.is_set():
                         break
                     name, payload = ai_service.live_event_to_frame(event)
@@ -575,21 +657,33 @@ def chat_stream():
                             last_usage = payload['usage']
                     emit(name, payload)
             except Exception as exc:
-                logger.exception("AI stream worker failed")
-                emit('error', {'message': str(exc) if isinstance(exc, ai_service.AIProtectionError)
-                               else 'AI request failed. Please try again.'})
+                budget_message = ai_service.budget_error_message(exc)
+                outcome = 'budget_exceeded' if budget_message else 'error'
+                if budget_message:
+                    emit('error', {'message': budget_message, 'code': 'ai_budget_exceeded'})
+                elif isinstance(exc, ApplicationError):
+                    emit('error', {'message': str(exc), 'code': exc.code})
+                else:
+                    logger.exception("AI stream worker failed")
+                    emit('error', {'message': str(exc) if isinstance(exc, ai_service.AIProtectionError)
+                                   else 'AI request failed. Please try again.'})
             finally:
                 ai_service.unregister_gate(conversation_id, gate)
                 try:
                     text = ''.join(acc_text)
-                    if text or tool_order:
+                    if conv is not None:
+                        last_usage = conv.usage
+                    if recorder is not None:
+                        last_usage = recorder.finish('interrupted' if cancel_event.is_set() else outcome, conv)
+                    if text or tool_order or conv is not None:
                         conv_row = db.session.get(AiConversation, conversation_id)
                         if conv_row is not None:
-                            _persist_assistant_message(
-                                conv_row, text,
-                                tool_calls=[tool_calls[i] for i in tool_order if i in tool_calls],
-                                usage=last_usage,
-                            )
+                            if text or tool_order:
+                                _persist_assistant_message(
+                                    conv_row, text,
+                                    tool_calls=[tool_calls[i] for i in tool_order if i in tool_calls],
+                                    usage=last_usage,
+                                )
                             if conv is not None:
                                 ai_service.persist_conversation(conv_row, conv, page_context=page_context)
                 except Exception:

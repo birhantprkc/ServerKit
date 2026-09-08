@@ -8,6 +8,7 @@
         "build": "vite build",
         "test": "node --test",
         "test:browser": "node scripts/settings-browser.mjs",
+        "test:settings-ui": "node scripts/settings-ui-browser.mjs",
         "lint": "node scripts/lint.mjs && node scripts/check-font-integrity.mjs && node scripts/check-settings-index.mjs && node scripts/check-theme-tokens.mjs && node scripts/check-frontend-boundaries.mjs && node scripts/check-style-ownership.mjs && node scripts/check-status-one-door.mjs && node scripts/check-status-scss.mjs && node scripts/check-i18n-literals.mjs && node scripts/check-intl-door.mjs && node scripts/extract-i18n.mjs --check && node scripts/check-i18n.mjs && node scripts/check-logical-properties.mjs && node scripts/generate-vendor-shims.mjs --check && node ../scripts/check-html-sinks.mjs",
         "lint:baseline": "node scripts/lint.mjs --update",
         "test:controls": "node scripts/controls-browser.mjs",

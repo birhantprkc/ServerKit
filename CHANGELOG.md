@@ -18,6 +18,24 @@ Earlier development history remains in
 The [agent](https://github.com/jhd3197/serverkit-agent/releases) has its own
 release history; historical `agent-v*` tags are not panel releases.
 
+## [1.11.0] - 2026-09-08
+
+### Added
+
+- Configure connection-bound AI task models, routing strategies and guarded
+  fallbacks through the AI Assistant settings.
+- Set spending and generation limits, and inspect AI usage with user and
+  workspace accounting.
+- Add browser coverage for AI management and shared settings interfaces.
+
+### Fixed
+
+- Refresh the bundled extension registry and generated API inventories.
+- Normalize usage-report user and workspace filters before quota calculations.
+- Raise the clean-checkout backend test floor from 5,110 to 5,205 tests.
+
+[Source changes since 1.10.0](https://github.com/jhd3197/ServerKit/compare/v1.10.0...v1.11.0).
+
 ## [1.10.0] - 2026-09-08
 
 ### Added
@@ -930,6 +948,7 @@ require their matching extensions. Review the installed extensions after updatin
 - Established the earliest published panel release covered by this backfill, with the Flask/React control panel, application and database management, Docker operations, backups and server monitoring.
 - Moved the agent into the separate serverkit-agent repository and introduced a dedicated panel release workflow.
 
+[1.11.0]: https://github.com/jhd3197/ServerKit/releases/tag/v1.11.0
 [1.10.0]: https://github.com/jhd3197/ServerKit/releases/tag/v1.10.0
 [1.9.29]: https://github.com/jhd3197/ServerKit/releases/tag/v1.9.29
 [1.9.28]: https://github.com/jhd3197/ServerKit/releases/tag/v1.9.28

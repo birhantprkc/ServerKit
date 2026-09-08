@@ -300,6 +300,14 @@ class AIProtectionError(RuntimeError):
     """Enabled protection failed; never send the original data as a fallback."""
 
 
+def budget_error_message(exc: Exception) -> Optional[str]:
+    """Translate SDK budget stops without exposing provider exception details."""
+    from prompture.exceptions import BudgetExceededError
+    if isinstance(exc, BudgetExceededError):
+        return 'This conversation has reached its AI cost limit. An administrator can adjust the limit in AI Assistant settings.'
+    return None
+
+
 def _filter_secrets(text: str) -> str:
     """Deterministic credential filtering, independent of optional PII detection."""
     text = re.sub(r'-----BEGIN [^-]*PRIVATE KEY-----.*?-----END [^-]*PRIVATE KEY-----',
@@ -393,8 +401,10 @@ def build_system_prompt(user, mode: str, page_context: Optional[dict],
 # ===========================================================================
 # Per-request tool registry (read/write wrappers)
 # ===========================================================================
-def build_tool_registry(user, mode: str, gate: Optional["ConfirmationGate"]) -> Optional[ToolRegistry]:
+def build_tool_registry(user, mode: str, gate: Optional["ConfirmationGate"], *, read_only=False) -> Optional[ToolRegistry]:
     descriptors = ai_tool_registry.list_for(user, mode)
+    if read_only:
+        descriptors = [d for d in descriptors if not d.is_write]
     if not descriptors:
         return None
     from prompture.agents.tools_schema import ToolDefinition, ToolRegistry
@@ -521,21 +531,36 @@ def summarize_action(descriptor, params: dict) -> str:
 # ===========================================================================
 def build_conversation(row, user, mode: str, page_context: Optional[dict],
                        gate: Optional["ConfirmationGate"],
-                       attachment_context: Optional[list[dict]] = None) -> Conversation:
+                       attachment_context: Optional[list[dict]] = None, recorder=None) -> Conversation:
     """Create a fresh Conversation or resume from the stored export (re-supplying tools)."""
     from prompture import Conversation
     from app.services import ai_connections
+    from app.services import ai_management, ai_runtime
 
-    registry = build_tool_registry(user, mode, gate)
+    config = ai_management.settings()
+    workflow = (getattr(row, 'management', None) or {}).get('workflow', 'chat')
+    if workflow in ('summarize', 'extract'):
+        registry = None
+    elif workflow == 'diagnose':
+        registry = build_tool_registry(user, 'assistant', gate, read_only=True)
+    else:
+        registry = build_tool_registry(user, mode, gate)
     system = build_system_prompt(
         user, mode, page_context, attachment_context=attachment_context,
     )
+    if workflow == 'summarize':
+        system += '\nSummarize the supplied data concisely. Separate observations from uncertainty. Do not execute actions.'
+    elif workflow == 'diagnose':
+        system += '\nThis is read-only diagnosis. Gather evidence with available read tools, explain likely causes and suggest next steps. Never change server state.'
     connection_id = getattr(row, 'connection_id', None)
     if connection_id:
         connection = ai_connections.get_connection(connection_id)
         model = (row.model_name or '').split('/', 1)[-1] or connection.model
         driver = ai_connections.build_driver(connection, model)
         resolved_model = ai_connections.model_name(connection, model)
+        if recorder is not None:
+            driver = ai_runtime.managed_driver(driver, connection, model, recorder, _max_cost(), row)
+            resolved_model = row.model_name
     else:
         # Compatibility for pre-migration/test conversations. Never attach a
         # different provider's current credentials to an old conversation.
@@ -553,40 +578,37 @@ def build_conversation(row, user, mode: str, page_context: Optional[dict],
     # owned by Prompture. Reapply current policy instead of trusting export options.
     class ConfiguredConversation(Conversation):
         def __init__(self, **kwargs):
+            max_cost = _max_cost()
             kwargs.update(driver=driver, model_name=resolved_model,
-                          max_tool_rounds=(6 if mode == 'assistant' else 0),
-                          max_tool_result_length=4000, max_cost=_max_cost(),
-                          budget_policy=None, fallback_models=None, options={})
+                          max_tool_rounds=(config['max_tool_rounds'] if registry else 0),
+                          max_tool_result_length=config['max_tool_result_length'],
+                          max_history_messages=config['max_history_messages'],
+                          max_cost=max_cost, max_tokens=config['max_tokens'] or None,
+                          budget_policy=('warn_and_continue' if config['budget_policy'] == 'warn_and_continue' else 'hard_stop')
+                          if max_cost is not None or config['max_tokens'] else None,
+                          fallback_models=None, options={'max_tokens': config['max_output_tokens']})
             super().__init__(**kwargs)
 
     export = row.export
     if export:
         conv = ConfiguredConversation.from_export(_maybe_redact_result(export), tools=registry)
         conv.system_prompt = system  # refresh page context each turn
-        return conv
-    return ConfiguredConversation(
-        model_name=resolved_model,
-        system_prompt=system,
-        tools=registry,
-        max_tool_rounds=(6 if mode == "assistant" else 0),
-        max_tool_result_length=4000,
-        max_cost=_max_cost(),
-        simulated_tools="auto",
-        conversation_id=row.id,
-    )
+    else:
+        conv = ConfiguredConversation(model_name=resolved_model, system_prompt=system,
+                                      tools=registry, simulated_tools='auto', conversation_id=row.id)
+    if recorder is not None:
+        recorder.initial = dict(conv.usage)
+        if connection_id:
+            driver.conversation = conv
+    return conv
 
 
 def _max_cost() -> Optional[float]:
-    raw = _setting("ai_max_cost_usd", None)
+    raw = _setting("ai_max_cost_usd", 0.5)
     try:
         return float(raw) if raw not in (None, "", "0", 0) else None
     except (TypeError, ValueError):
         return None
-
-
-def _fallback_models() -> list[str]:
-    fb = _setting("ai_fallback_models", []) or []
-    return [m for m in fb if m] if isinstance(fb, list) else []
 
 
 def persist_conversation(row, conv: Conversation, *, page_context: Optional[dict] = None) -> None:
@@ -609,38 +631,64 @@ def derive_title(message: str) -> str:
 # ===========================================================================
 # In-process invocation (used by plugins via app.plugins_sdk.ai)
 # ===========================================================================
-def _oneshot_conversation(user, mode: str, page_context: Optional[dict]) -> Conversation:
-    from prompture import Conversation
-    from app.services import ai_connections
+def _oneshot_run(user, prompt, *, mode, profile, workflow):
+    from types import SimpleNamespace
+    from flask import has_request_context, request
+    from app.exceptions import PermissionDeniedError, ValidationError
+    from app.services import ai_connections, ai_management, ai_usage
 
+    if user is None or _caller_validator(user)() is None:
+        raise PermissionDeniedError('An active user is required for AI calls.')
+    if not is_enabled() or not is_configured():
+        raise PermissionDeniedError('The AI assistant is disabled or unconfigured.')
+    if not isinstance(prompt, str) or not prompt.strip() or len(prompt) > 16000 or mode not in ('simple', 'assistant'):
+        raise ValidationError('Provide a valid AI prompt and mode.')
     ensure_initialized()
-    registry = build_tool_registry(user, mode, gate=None)
-    system = build_system_prompt(user, mode, page_context)
-    return Conversation(
-        model_name=current_model_name(),
-        driver=(ai_connections.build_driver(ai_connections.get_connection())
-                if ai_connections.default_id() else None),
-        system_prompt=system,
-        tools=registry,
-        env=build_provider_env(),
-        max_tool_rounds=(6 if mode == "assistant" else 0),
-        max_tool_result_length=4000,
-        simulated_tools="auto",
-    )
+    if injection_flagged(prompt):
+        raise AIProtectionError('Your message was flagged by the prompt-injection guardrail.')
+    selection = ai_management.resolve(profile=profile, workflow=workflow, message=prompt)
+    selection['workspace_id'] = ai_management.workspace_id(user, request.headers.get('X-Workspace-Id') if has_request_context() else None)
+    connection = ai_connections.get_connection(selection['connection_id'])
+    # Plugins retain their one-shot API without creating a chat transcript.
+    row = SimpleNamespace(id=None, connection_id=connection.id,
+                          model_name=ai_connections.model_name(connection, selection['model']),
+                          management=selection, export=None)
+    return row, ai_usage.start(row, user)
 
 
 def oneshot_ask(user, prompt: str, *, mode: str = "simple",
-                page_context: Optional[dict] = None) -> str:
-    """Single-shot assistant call (no persistence) for in-process callers."""
-    conv = _oneshot_conversation(user, mode, page_context)
-    return conv.ask(redact_input(prompt))
+                page_context: Optional[dict] = None, profile=None, workflow='chat') -> str:
+    """Single-shot plugin call with shared policy and durable run accounting."""
+    from app.services import ai_runtime
+    row, recorder = _oneshot_run(user, prompt, mode=mode, profile=profile, workflow=workflow)
+    conv = None
+    try:
+        conv = build_conversation(row, user, mode, page_context, None, recorder=recorder)
+        result = ai_runtime.ask(conv, redact_input(prompt), workflow)
+    except Exception as exc:
+        recorder.finish('budget_exceeded' if budget_error_message(exc) else 'error', conv)
+        raise
+    recorder.finish('success', conv)
+    return result
 
 
 def oneshot_stream(user, prompt: str, *, mode: str = "simple",
-                   page_context: Optional[dict] = None) -> Iterator[str]:
-    """Single-shot streaming assistant call yielding text chunks."""
-    conv = _oneshot_conversation(user, mode, page_context)
-    yield from conv.ask_stream(redact_input(prompt))
+                   page_context: Optional[dict] = None, profile=None, workflow='chat') -> Iterator[str]:
+    """Single-shot plugin stream using the same driver and spending policy."""
+    from app.services import ai_runtime
+    row, recorder = _oneshot_run(user, prompt, mode=mode, profile=profile, workflow=workflow)
+    conv, outcome = None, 'interrupted'
+    try:
+        conv = build_conversation(row, user, mode, page_context, None, recorder=recorder)
+        for event in ai_runtime.ask_live(conv, redact_input(prompt), workflow):
+            if getattr(event, 'event_type', '') == 'text_delta':
+                yield event.text
+        outcome = 'success'
+    except Exception as exc:
+        outcome = 'budget_exceeded' if budget_error_message(exc) else 'error'
+        raise
+    finally:
+        recorder.finish(outcome, conv)
 
 
 # ===========================================================================

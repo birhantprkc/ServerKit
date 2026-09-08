@@ -100,16 +100,18 @@ def register_context_provider(route_pattern: str, func: Callable[..., Any],
     ai_tool_registry.register_context_provider(route_pattern, func, plugin_slug=plugin_slug)
 
 
-def ask(prompt: str, *, mode: str = "simple", page_context: Optional[dict] = None) -> str:
+def ask(prompt: str, *, mode: str = "simple", page_context: Optional[dict] = None,
+        profile: Optional[str] = None, workflow: str = 'chat') -> str:
     """Invoke the assistant in-process as the current JWT user (RBAC applies)."""
     from app.plugins_sdk import current_user
     from app.services import ai_service
-    return ai_service.oneshot_ask(current_user(), prompt, mode=mode, page_context=page_context)
+    return ai_service.oneshot_ask(current_user(), prompt, mode=mode, page_context=page_context, profile=profile, workflow=workflow)
 
 
 def ask_stream(prompt: str, *, mode: str = "simple",
-               page_context: Optional[dict] = None) -> Iterator[str]:
+               page_context: Optional[dict] = None, profile: Optional[str] = None,
+               workflow: str = 'chat') -> Iterator[str]:
     """Streaming in-process assistant call; yields text chunks."""
     from app.plugins_sdk import current_user
     from app.services import ai_service
-    return ai_service.oneshot_stream(current_user(), prompt, mode=mode, page_context=page_context)
+    return ai_service.oneshot_stream(current_user(), prompt, mode=mode, page_context=page_context, profile=profile, workflow=workflow)
