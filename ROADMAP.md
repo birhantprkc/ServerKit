@@ -621,7 +621,7 @@ Community request: D3M4L, September 1, 2026 — connect the assistant to OmniRou
 - [x] Test compatible endpoints with a real bounded chat request; verify native model discovery and surface failures rather than treating driver construction as success.
 - [x] Migrate existing settings and matching conversations, preserve write confirmations and RBAC, and test secret isolation, streaming, tool protocol, and fresh/resumed conversations.
 
-See [AI provider connections](docs/AI_PROVIDERS.md) for setup and compatibility details. ServerKit uses Prompture's existing drivers; compatible gateways use its OpenAI driver because the generic driver in 1.10 lacks native streaming and tools. Automatic cross-connection fallback remains a separate feature. OmniRoute-compatible protocol behavior is covered by SDK transport tests; a live OmniRoute instance is still needed for deployment-specific verification.
+See [AI provider connections](docs/AI_PROVIDERS.md) for setup and compatibility details. ServerKit uses Prompture 1.11.0's existing drivers, including native streaming and tool calls through its OpenAI-compatible driver. Automatic cross-connection fallback remains a separate feature. OmniRoute-compatible protocol behavior is covered by HTTP transport tests; a live OmniRoute instance is still needed for deployment-specific verification.
 
 ## Deploy Console & Live Run Logs
 

@@ -47,10 +47,11 @@ based only on constructing a driver. Discovery does not prove streaming or tool
 support; these depend on the provider and model. Error responses omit raw SDK
 errors and credentials.
 
-Prompture 1.10's generic compatible driver lacks native streaming/tool support.
-ServerKit uses Prompture's OpenAI driver with an explicit base URL for compatible
-connections, preserving those capabilities without writing another API client.
-Unauthenticated local gateways omit the Authorization header. Native Anthropic's
+ServerKit pins Prompture 1.11.0 and uses its native OpenAI-compatible driver for
+custom gateways, Prompture Hub, and LM Studio. That driver handles text streaming,
+streamed tool calls, and ordinary tool calls without the OpenAI SDK. Explicit
+model IDs are preserved, and unauthenticated gateways omit the Authorization
+header even if a process-level compatible API key is set. Native Anthropic's
 installed driver does not accept an endpoint argument: ServerKit refuses a
 conflicting process-level `ANTHROPIC_BASE_URL` override instead of silently using
 it. Vertex Gemini requires an explicit API key; Vertex Claude requires a project,

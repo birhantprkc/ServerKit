@@ -139,42 +139,76 @@ def test_chats_keep_connection_and_model_and_block_destination_changes(app, clie
     assert client.delete('/api/v1/ai/connections/' + first['id'], headers=auth_headers).status_code == 409
 
 
-def _mock_transport(driver, handler):
-    # Support both SDK transport module names; newer OpenAI SDKs use httpx2.
-    module = importlib.import_module(type(driver.client._client._transport).__module__.split('.')[0])
-    driver.client = driver.client.with_options(http_client=module.Client(
-        transport=module.MockTransport(handler), event_hooks=driver.client._client.event_hooks), max_retries=0)
-    return module
-
-
-def test_compatible_driver_streaming_and_tool_protocol_preserve_model(monkeypatch):
-    from prompture.drivers.cachibot_driver import CachiBotDriver
-    monkeypatch.setattr(CachiBotDriver, '_MODEL_MAP', {'auto': 'wrong/provider'})
-    monkeypatch.setenv('OPENAI_API_KEY', 'ambient')
-    row = SimpleNamespace(**service.prepare(draft(model='auto', config={'endpoint': 'http://gateway.local/v1'})))
+@pytest.mark.parametrize('provider', ['openai_compatible', 'prompture-hub', 'lmstudio'])
+@pytest.mark.parametrize('api_key', ['', 'explicit-gateway-key'])
+def test_compatible_driver_streaming_and_tool_protocol_preserve_model(monkeypatch, provider, api_key):
+    import requests
+    from prompture.drivers.openai_compatible_driver import OpenAICompatibleDriver
+    monkeypatch.setenv('OPENAI_COMPATIBLE_API_KEY', 'ambient-secret')
+    monkeypatch.setattr(service, '_installed', lambda module: False)
+    model = 'fireworks/team/model'
+    row = SimpleNamespace(**service.prepare(draft(provider=provider, model=model,
+        config={'endpoint': 'http://gateway.local/v1/chat/completions', 'api_key': api_key})))
     driver = service.build_driver(row)
+    assert type(driver) is OpenAICompatibleDriver
     calls = []
-    def respond(request):
-        payload = json.loads(request.content)
-        calls.append((dict(request.headers), payload))
-        if payload.get('stream'):
-            content = 'data: ' + json.dumps({'id': 'c1', 'choices': [{'index': 0, 'delta': {'content': 'OK'}, 'finish_reason': None}]})
-            return http.Response(200, content=(content + '\n\ndata: [DONE]\n\n').encode(), headers={'content-type': 'text/event-stream'})
-        return http.Response(200, json={'id': 'c1', 'object': 'chat.completion', 'created': 1,
-            'model': 'auto', 'choices': [{'index': 0, 'finish_reason': 'tool_calls', 'message': {'role': 'assistant', 'content': None,
+    closed = []
+
+    class Response:
+        def __init__(self, payload):
+            self.payload = payload
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            closed.append(True)
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {'choices': [{'finish_reason': 'tool_calls', 'message': {'role': 'assistant', 'content': None,
                 'tool_calls': [{'id': 'call1', 'type': 'function', 'function': {'name': 'peek', 'arguments': '{}'}}]}}],
-            'usage': {'prompt_tokens': 3, 'completion_tokens': 2, 'total_tokens': 5}})
-    http = _mock_transport(driver, respond)
-    assert driver.supports_streaming and driver.supports_tool_use
-    chunks = list(driver.generate_messages_stream([{'role': 'user', 'content': 'Hi'}], {}))
+                'usage': {'prompt_tokens': 3, 'completion_tokens': 2, 'total_tokens': 5}}
+
+        def iter_lines(self, **kwargs):
+            if self.payload.get('tools'):
+                deltas = [
+                    {'tool_calls': [{'index': 0, 'id': 'call1', 'type': 'function', 'function': {'name': 'peek', 'arguments': '{'}}]},
+                    {'tool_calls': [{'index': 0, 'function': {'arguments': '}'}}]},
+                ]
+            else:
+                deltas = [{'content': 'OK'}]
+            for delta in deltas:
+                yield 'data: ' + json.dumps({'choices': [{'index': 0, 'delta': delta, 'finish_reason': None}]})
+            yield 'data: ' + json.dumps({'choices': [{'index': 0, 'delta': {}, 'finish_reason': 'tool_calls' if self.payload.get('tools') else 'stop'}],
+                'usage': {'prompt_tokens': 3, 'completion_tokens': 2, 'total_tokens': 5}})
+            yield 'data: [DONE]'
+
+    def post(url, **kwargs):
+        calls.append((url, kwargs['headers'], kwargs['json']))
+        return Response(kwargs['json'])
+
+    monkeypatch.setattr(requests, 'post', post)
+    assert driver.supports_streaming and driver.supports_tool_use and driver.supports_streaming_tool_use
+    messages = [{'role': 'user', 'content': 'Hi'}]
+    tools = [{'type': 'function', 'function': {'name': 'peek', 'parameters': {'type': 'object', 'properties': {}}}}]
+    chunks = list(driver.generate_messages_stream(messages, {}))
     assert any(c.get('text') == 'OK' for c in chunks)
-    result = driver.generate_messages_with_tools([{'role': 'user', 'content': 'Peek'}],
-        [{'type': 'function', 'function': {'name': 'peek', 'parameters': {'type': 'object', 'properties': {}}}}], {})
+    assert chunks[-1]['meta']['total_tokens'] == 5
+    result = driver.generate_messages_with_tools(messages, tools, {})
     assert result['tool_calls'][0]['name'] == 'peek'
-    assert all(payload['model'] == 'auto' for _, payload in calls)
-    assert all('authorization' not in headers for headers, _ in calls)
-    assert calls[-1][1]['tools'][0]['function']['name'] == 'peek'
-    driver.client.close()
+    events = list(driver.generate_messages_with_tools_stream(messages, tools, {}))
+    assert {'tool_use_start', 'tool_input_delta', 'tool_use_stop', 'message_stop'} <= {e.event_type for e in events}
+    assert next(e for e in events if e.event_type == 'tool_use_stop').input == {}
+    assert len(closed) == 2
+    assert all(url == 'http://gateway.local/v1/chat/completions' for url, _, _ in calls)
+    assert all(payload['model'] == model for _, _, payload in calls)
+    for _, headers, _ in calls:
+        assert headers.get('Authorization') == (f'Bearer {api_key}' if api_key else None)
+        assert 'ambient-secret' not in str(headers)
+    assert calls[-1][2]['tools'][0]['function']['name'] == 'peek'
 
 
 def test_resume_restores_history_with_original_connection_not_ambient(app, monkeypatch):

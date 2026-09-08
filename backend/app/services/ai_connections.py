@@ -16,7 +16,6 @@ from app.models.system_settings import SystemSettings
 # UI metadata complements Prompture's constructor maps (which are not a form
 # schema). Never copy secret defaults from Prompture's environment settings.
 _DEPENDENCIES = {
-    'openai_compatible': ['openai'], 'lmstudio': ['openai'],
     'openai': ['openai'], 'claude': ['anthropic'], 'google': ['google.genai'],
     'azure': ['openai'], 'google_vertexai': ['google.genai', 'anthropic'],
     'bedrock': ['boto3'], 'groq': ['groq'], 'cohere': ['cohere'],
@@ -225,21 +224,18 @@ def build_driver(row, model=None):
     if provider == 'claude' and os.environ.get('ANTHROPIC_BASE_URL', '').rstrip('/') not in ('', 'https://api.anthropic.com'):
         raise ValueError('The installed native Anthropic driver inherits ANTHROPIC_BASE_URL. Remove that process override or configure an explicit compatible gateway connection.')
     if provider in ('openai_compatible', 'prompture-hub', 'lmstudio'):
+        from prompture.drivers.openai_compatible_driver import OpenAICompatibleDriver
+
         endpoint = config['endpoint'].removesuffix('/chat/completions')
-        # Prompture's generic driver has no native tools/streaming in 1.10.
-        # Its OpenAI driver accepts the same base URL and supports both, without
-        # CachiBot's process-global short-model alias map changing gateway IDs.
-        driver = get_driver_for_model(
-            f'openai/{model or row.model}', base_url=endpoint,
+        # The generic descriptor has no credential kwarg map in 1.11. Construct
+        # its driver directly so explicit profile credentials are always passed.
+        driver = OpenAICompatibleDriver(
+            model=model or row.model, endpoint=endpoint,
             api_key=config.get('api_key') or 'serverkit-no-auth',
         )
-        if not config.get('api_key'):
-            # SDK versions differ in how they validate omitted auth headers.
-            # Strip the placeholder in this client's request hook, after SDK
-            # validation and before transport, including streaming requests.
-            driver.client._client.event_hooks['request'].append(
-                lambda request: request.headers.pop('Authorization', None))
-            driver.api_key = None
+        # Block the constructor's ambient-key fallback, then remove the sentinel
+        # before any request. Keyless gateways send no Authorization header.
+        driver.api_key = config.get('api_key') or None
         return driver
     # Blank overrides suppress factory-level global settings resolution. Required
     # credentials and endpoints above prevent constructor-level fallback as well.

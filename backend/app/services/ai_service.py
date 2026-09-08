@@ -547,7 +547,7 @@ def build_conversation(row, user, mode: str, page_context: Optional[dict],
         from prompture.drivers import get_driver_for_model
         driver = get_driver_for_model(resolved_model, env=build_provider_env())
 
-    # Prompture 1.10 from_export does not accept a driver/env. Inject the already
+    # Prompture 1.11 from_export does not accept a driver/env. Inject the already
     # configured instance through its constructor hook, so resume never builds
     # an ambient/global driver, even temporarily. History/usage restoration stays
     # owned by Prompture. Reapply current policy instead of trusting export options.
