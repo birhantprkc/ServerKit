@@ -53,19 +53,29 @@ as a prerequisite to writing the description.
 
 ## Choose the amount of detail
 
-- A small fix usually needs a title, one short paragraph, and relevant
-  validation. Two sentences can be enough. Do not pad it to a sentence quota.
-- A feature or mixed change may need a short summary and a few bullets for
-  distinct outcomes. Skip Highlights if it would repeat the summary.
-- A large promotion may need sections grouped by behavior or subsystem.
-  Cover material changes and risks, but group mechanical edits instead of
-  writing a file-by-file inventory. Link an existing detailed review or plan
-  when it helps. Do not invent a shared story for unrelated changes.
+The visible body stays short no matter how large the branch is. A reviewer
+reads it before deciding to expand anything, so it carries the problem, the
+resulting behavior, and what they must act on — not the implementation.
 
-Use `<details><summary>Technical changes</summary>` only when a substantial
-implementation appendix helps. Put blank lines around Markdown inside it.
-Keep upgrade actions, breaking changes, security limitations, and validation
-visible outside the accordion. Omit empty sections and template placeholders.
+- A small fix usually needs a title, one short paragraph, and relevant
+  validation. Two sentences can be enough. Do not pad it to a sentence quota,
+  and do not add an accordion it does not need.
+- Anything larger keeps the same shape: two or three short paragraphs, then
+  `### Contributors` when others authored commits, `### Highlights` as
+  user-facing outcomes, short `### Upgrade notes` and `### Validation`, then
+  everything else inside `<details><summary>Technical changes</summary>`.
+  Skip Highlights if it would repeat the paragraphs.
+- Aim for roughly 400 words before the accordion. A large promotion does not
+  earn a longer body; it earns a longer appendix.
+
+Inside the accordion, group bullets under bold subsystem labels. Cover material
+changes and risks, but group mechanical edits instead of writing a file-by-file
+inventory; link an existing detailed review or plan when it helps. Put blank
+lines around Markdown inside it. Do not promote implementation detail into the
+body, and do not give the body its own `##` sections per subsystem — that is
+what the accordion is for. Keep upgrade actions, breaking changes, security
+limitations, and validation visible outside it. Omit empty sections and
+template placeholders. Do not invent a shared story for unrelated changes.
 
 ## Write the description
 
