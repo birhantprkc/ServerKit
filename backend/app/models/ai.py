@@ -43,6 +43,15 @@ class AiConversation(JsonColumnMixin, TimestampMixin, db.Model):
     connection_id = db.Column(db.String(64), db.ForeignKey('ai_provider_connections.id'), index=True)
     export_json = db.Column(db.Text)                 # Prompture conv.export(strip_images=True)
     last_page = db.Column(db.String(256))            # last route the assistant saw (for resume context)
+    management_json = db.Column(db.Text)
+
+    @property
+    def management(self):
+        return self._json_read('management_json', {})
+
+    @management.setter
+    def management(self, value):
+        self.management_json = json.dumps(value)
 
     messages = db.relationship(
         'AiMessage', backref='conversation', cascade='all, delete-orphan',
@@ -73,6 +82,7 @@ class AiConversation(JsonColumnMixin, TimestampMixin, db.Model):
             'model_name': self.model_name,
             'connection_id': self.connection_id,
             'last_page': self.last_page,
+            'management': self.management,
             'message_count': self.messages.count(),
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
@@ -91,7 +101,16 @@ class AiProviderConnection(JsonColumnMixin, TimestampMixin, db.Model):
     provider = db.Column(db.String(64), nullable=False)
     model = db.Column(db.String(256), nullable=False)
     config_encrypted = db.Column(db.Text, nullable=False)
+    model_catalog_json = db.Column(db.Text)
     conversations = db.relationship('AiConversation', backref='connection')
+
+    @property
+    def model_catalog(self):
+        return self._json_read('model_catalog_json', [])
+
+    @model_catalog.setter
+    def model_catalog(self, value):
+        self.model_catalog_json = json.dumps(value)
 
     @property
     def config(self):
@@ -165,6 +184,50 @@ class AiMessage(JsonColumnMixin, db.Model):
             'usage': self.usage,
             'created_at': self.created_at.isoformat() if self.created_at else None,
         }
+
+
+class AiRun(JsonColumnMixin, db.Model):
+    """Durable per-turn accounting, retained when a transcript is deleted."""
+    __tablename__ = 'ai_runs'
+
+    id = db.Column(db.String(64), primary_key=True, default=_new_id)
+    conversation_id = db.Column(db.String(64), db.ForeignKey('ai_conversations.id', ondelete='SET NULL'), index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), index=True)
+    workspace_id = db.Column(db.Integer, db.ForeignKey('workspaces.id', ondelete='SET NULL'), index=True)
+    conversation = db.relationship('AiConversation', backref=db.backref('runs', lazy='dynamic'))
+    user = db.relationship('User', backref=db.backref('ai_runs', lazy='dynamic'))
+    workspace = db.relationship('Workspace', backref=db.backref('ai_runs', lazy='dynamic'))
+    connection_id = db.Column(db.String(64), index=True)  # immutable reporting snapshot
+    model = db.Column(db.String(384))
+    profile = db.Column(db.String(16), nullable=False, default='standard')
+    workflow = db.Column(db.String(16), nullable=False, default='chat')
+    strategy = db.Column(db.String(32), nullable=False, default='explicit')
+    reason = db.Column(db.String(512))
+    status = db.Column(db.String(24), nullable=False, default='running', index=True)
+    cost = db.Column(db.Float, nullable=False, default=0)
+    budget_charge = db.Column(db.Float, nullable=False, default=0)
+    reserved_cost = db.Column(db.Float, nullable=False, default=0)
+    total_tokens = db.Column(db.Integer, nullable=False, default=0)
+    duration_ms = db.Column(db.Float, nullable=False, default=0)
+    usage_json = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
+    completed_at = db.Column(db.DateTime)
+
+    @property
+    def usage(self):
+        return self._json_read('usage_json', {})
+
+    @usage.setter
+    def usage(self, value):
+        self.usage_json = json.dumps(value)
+
+    def to_dict(self):
+        return {**{key: getattr(self, key) for key in (
+            'id', 'conversation_id', 'user_id', 'workspace_id', 'connection_id', 'model',
+            'profile', 'workflow', 'strategy', 'reason', 'status', 'cost', 'budget_charge',
+            'reserved_cost', 'total_tokens', 'duration_ms')},
+            'usage': self.usage, 'created_at': self.created_at.isoformat() + 'Z',
+            'completed_at': self.completed_at.isoformat() + 'Z' if self.completed_at else None}
 
 
 class AiPendingAction(JsonColumnMixin, db.Model):

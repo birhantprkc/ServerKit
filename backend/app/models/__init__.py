@@ -60,7 +60,7 @@ from app.models.status_page import StatusPage, StatusComponent, HealthCheck, Sta
 from app.models.cloud_server import CloudProvider, CloudServer, CloudSnapshot
 from app.models.pending_agent import PendingAgent
 from app.models.plugin import InstalledPlugin
-from app.models.ai import AiConversation, AiMessage, AiPendingAction
+from app.models.ai import AiConversation, AiMessage, AiPendingAction, AiRun
 from app.models.image_scan import ImageVulnerabilityScan, SbomArtifact
 from app.models.passkey import PasskeyCredential
 from app.models.secret_vault import SecretVault, Secret
@@ -113,7 +113,7 @@ __all__ = [
     'CloudProvider', 'CloudServer', 'CloudSnapshot',
     'PendingAgent',
     'InstalledPlugin',
-    'AiConversation', 'AiMessage', 'AiPendingAction',
+    'AiConversation', 'AiMessage', 'AiPendingAction', 'AiRun',
     'ImageVulnerabilityScan', 'SbomArtifact',
     'PasskeyCredential',
     'SecretVault', 'Secret',

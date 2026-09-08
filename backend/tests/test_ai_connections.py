@@ -51,7 +51,7 @@ def test_connection_catalog_supports_api_key_clients_without_secrets(app, client
     headers = {'X-API-Key': key}
     response = client.get('/api/v1/ai/connections', headers=headers)
     assert response.status_code == 200
-    assert set(response.get_json()['connections'][0]) == {'id', 'name', 'provider', 'model'}
+    assert set(response.get_json()['connections'][0]) == {'id', 'name', 'provider', 'model', 'model_catalog'}
     assert 'private-test-key' not in response.get_data(as_text=True)
     assert client.post('/api/v1/ai/connections', json=draft(), headers=headers).status_code == 403
 
@@ -95,7 +95,7 @@ def test_profile_storage_and_api_never_return_secrets(app, client, auth_headers)
         body = client.get(path, headers=auth_headers).get_data(as_text=True)
         assert 'private-test-key' not in body
     selector = client.get('/api/v1/ai/connections', headers=auth_headers).get_json()['connections'][0]
-    assert set(selector) == {'id', 'name', 'provider', 'model'}
+    assert set(selector) == {'id', 'name', 'provider', 'model', 'model_catalog'}
 
 
 def test_secret_retention_clear_and_endpoint_change(app):
