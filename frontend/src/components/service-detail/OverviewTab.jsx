@@ -35,13 +35,16 @@ const OverviewTab = ({ app, deployConfig }) => {
 
     const isDocker = app.app_type === 'docker';
     const isPython = ['flask', 'django'].includes(app.app_type);
+    const { id: appId, name: appName, container_id: containerId } = app;
 
     // Load on mount and whenever the app changes; poll on top of that.
     const loadMetrics = useCallback(async () => {
         try {
             if (isDocker) {
                 const data = await api.getContainers(true);
-                const runtimeId = resolveAppContainerId(app, data.containers || []);
+                const runtimeId = resolveAppContainerId(
+                    { id: appId, name: appName, container_id: containerId }, data.containers || []
+                );
                 if (runtimeId) {
                     const containerStats = normalizeContainerStats(
                         await api.getContainerStats(runtimeId)
@@ -55,7 +58,7 @@ const OverviewTab = ({ app, deployConfig }) => {
                     });
                 }
             } else if (isPython) {
-                const data = await api.getPythonAppStatus(app.id);
+                const data = await api.getPythonAppStatus(appId);
                 setMetrics({
                     active: data.active,
                     pid: data.pid,
@@ -69,7 +72,7 @@ const OverviewTab = ({ app, deployConfig }) => {
         } finally {
             setMetricsLoading(false);
         }
-    }, [app, isDocker, isPython]);
+    }, [appId, appName, containerId, isDocker, isPython]);
 
     useEffect(() => { loadMetrics(); }, [loadMetrics]);
     usePolling(loadMetrics, METRICS_REFRESH_MS, { immediate: false });

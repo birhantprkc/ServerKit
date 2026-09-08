@@ -155,6 +155,12 @@ try {
         window.serviceFixture.setApp({ id: 1, name: 'alpha', app_type: 'docker' });
     });
     await page.waitForFunction(() => window.serviceFixture.state.pending.length === 1);
+    await action(() => window.serviceFixture.setApp({
+        id: 1, name: 'alpha', app_type: 'docker', status: 'running',
+    }));
+    await page.waitForTimeout(50);
+    assert.equal(await action(() => window.serviceFixture.state.pending.length), 1,
+        'recreated app metadata does not restart an in-flight metrics request');
     await action(() => window.serviceFixture.state.pending.shift().resolve({ cpu_percent: 42 }));
     await page.locator('#service .metrics-tab').waitFor();
     assert.match(await page.locator('#service').innerText(), /42\.0%/);
@@ -197,7 +203,7 @@ try {
     await action(() => window.serviceFixture.state.python.shift()({ active: false }));
     await page.locator('#service .metrics-tab').waitFor();
     assert.deepEqual(errors, []);
-    console.log('Service metrics regression passed: missing container, failed poll, app switch, late response and Python state reset.');
+    console.log('Service metrics regression passed: stable metadata refresh, missing container, failed poll, app switch, late response and Python state reset.');
     console.log('Metrics browser regression passed: slow response, manual sharing, socket loss/reconnect, hidden tab, remote selection, refresh off; widget sharing, refresh retention, workspace isolation.');
 } finally {
     await browser?.close();
