@@ -9,6 +9,7 @@ import os
 from urllib.parse import urlsplit
 
 from app import db
+from app.exceptions import ConflictError, NotFoundError
 from app.models.ai import AiProviderConnection
 from app.models.system_settings import SystemSettings
 
@@ -102,6 +103,26 @@ def public_connection(row, *, details=False):
 
 def default_id():
     return SystemSettings.get('ai_default_connection_id', '') or ''
+
+
+def list_connections(*, details=False):
+    rows = AiProviderConnection.query.order_by(AiProviderConnection.name).all()
+    return [public_connection(row, details=details) for row in rows]
+
+
+def require_connection(connection_id):
+    row = db.session.get(AiProviderConnection, connection_id)
+    if row is None:
+        raise NotFoundError('Connection not found')
+    return row
+
+
+def delete_connection(connection_id):
+    row = require_connection(connection_id)
+    if row.conversations or default_id() == row.id:
+        raise ConflictError('Choose another default and delete conversations using this connection before removing it.')
+    db.session.delete(row)
+    db.session.commit()
 
 
 def get_connection(connection_id=None):

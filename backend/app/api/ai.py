@@ -32,7 +32,7 @@ from flask_jwt_extended import get_jwt, jwt_required
 from werkzeug.exceptions import RequestEntityTooLarge, TooManyRequests
 
 from app import db
-from app.middleware.rbac import admin_required, get_current_user
+from app.middleware.rbac import admin_required, auth_required, get_current_user
 from app.models.ai import AiConversation, AiMessage, AiPendingAction
 from app.services import ai_service
 from app.services import ai_connections
@@ -168,8 +168,7 @@ def get_settings():
         'injection_detection': bool(SettingsService.get('ai_injection_detection', True)),
         # Never return the key itself — only whether one is configured.
         'api_key_set': bool(SettingsService.get('ai_api_key_encrypted', '')),
-        'connections': [ai_connections.public_connection(r, details=True)
-                        for r in ai_connections.AiProviderConnection.query.order_by(ai_connections.AiProviderConnection.name).all()],
+        'connections': ai_connections.list_connections(details=True),
         'default_connection_id': ai_connections.default_id(),
     })
 
@@ -240,11 +239,10 @@ def providers():
 
 
 @ai_bp.route('/connections', methods=['GET'])
-@jwt_required()
+@auth_required()
 def connections():
     # The chat selector needs names/models only, never configuration or keys.
-    rows = ai_connections.AiProviderConnection.query.order_by(ai_connections.AiProviderConnection.name).all()
-    return jsonify({'connections': [ai_connections.public_connection(r) for r in rows],
+    return jsonify({'connections': ai_connections.list_connections(),
                     'default_connection_id': ai_connections.default_id()})
 
 
@@ -255,32 +253,24 @@ def add_connection():
         row = ai_connections.save(request.get_json(silent=True))
         return jsonify(ai_connections.public_connection(row, details=True)), 201
     except ValueError as exc:
-        return jsonify({'error': str(exc)}), 400
+        raise ValidationError(str(exc)) from exc
 
 
 @ai_bp.route('/connections/<connection_id>', methods=['PUT'])
 @admin_required
 def update_connection(connection_id):
-    row = db.session.get(ai_connections.AiProviderConnection, connection_id)
-    if row is None:
-        return jsonify({'error': 'Connection not found'}), 404
+    row = ai_connections.require_connection(connection_id)
     try:
         row = ai_connections.save(request.get_json(silent=True), row)
         return jsonify(ai_connections.public_connection(row, details=True))
     except ValueError as exc:
-        return jsonify({'error': str(exc)}), 400
+        raise ValidationError(str(exc)) from exc
 
 
 @ai_bp.route('/connections/<connection_id>', methods=['DELETE'])
 @admin_required
 def delete_connection(connection_id):
-    row = db.session.get(ai_connections.AiProviderConnection, connection_id)
-    if row is None:
-        return jsonify({'error': 'Connection not found'}), 404
-    if row.conversations or ai_connections.default_id() == row.id:
-        return jsonify({'error': 'Choose another default and delete conversations using this connection before removing it.'}), 409
-    db.session.delete(row)
-    db.session.commit()
+    ai_connections.delete_connection(connection_id)
     return jsonify({'ok': True})
 
 
@@ -289,18 +279,16 @@ def delete_connection(connection_id):
 def probe_connection():
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
-        return jsonify({'error': 'Connection must be an object.'}), 400
+        raise ValidationError('Connection must be an object.')
     existing = None
     if data.get('id'):
         if not isinstance(data['id'], str) or len(data['id']) > 64:
-            return jsonify({'error': 'Invalid connection ID'}), 400
-        existing = db.session.get(ai_connections.AiProviderConnection, data['id'])
-        if existing is None:
-            return jsonify({'error': 'Connection not found'}), 404
+            raise ValidationError('Invalid connection ID')
+        existing = ai_connections.require_connection(data['id'])
     try:
         return jsonify(ai_connections.probe(data, existing, test=data.get('test') is True))
     except ValueError as exc:
-        return jsonify({'error': str(exc)}), 400
+        raise ValidationError(str(exc)) from exc
 
 
 @ai_bp.route('/models', methods=['GET'])

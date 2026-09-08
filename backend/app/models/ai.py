@@ -82,7 +82,7 @@ class AiConversation(JsonColumnMixin, TimestampMixin, db.Model):
         return data
 
 
-class AiProviderConnection(TimestampMixin, db.Model):
+class AiProviderConnection(JsonColumnMixin, TimestampMixin, db.Model):
     """Admin-managed AI connection. All driver configuration is encrypted."""
     __tablename__ = 'ai_provider_connections'
 
@@ -95,8 +95,15 @@ class AiProviderConnection(TimestampMixin, db.Model):
 
     @property
     def config(self):
+        config = self._json_read('_decrypted_config_json', None, expect=dict)
+        if config is None:
+            raise ValueError('Invalid saved AI connection configuration.')
+        return config
+
+    @property
+    def _decrypted_config_json(self):
         from app.utils.crypto import decrypt_secret
-        return json.loads(decrypt_secret(self.config_encrypted))
+        return decrypt_secret(self.config_encrypted)
 
     @config.setter
     def config(self, value):

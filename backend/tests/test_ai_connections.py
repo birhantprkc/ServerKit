@@ -17,6 +17,45 @@ def draft(**overrides):
             'config': {'endpoint': 'http://gateway.local:20128/v1', 'api_key': 'private-test-key'}, **overrides}
 
 
+@pytest.mark.parametrize('raw', ['', '{broken', '[]', 'null'])
+def test_corrupt_saved_config_fails_closed(app, raw):
+    from app.utils.crypto import encrypt_secret
+    with app.app_context():
+        row = AiProviderConnection(config_encrypted=encrypt_secret(raw))
+        with pytest.raises(ValueError, match='Invalid saved AI connection'):
+            _ = row.config
+
+
+def test_connection_errors_use_shared_contract(client, auth_headers):
+    for method in ('put', 'delete'):
+        response = getattr(client, method)('/api/v1/ai/connections/missing',
+                                           json={}, headers=auth_headers)
+        assert response.status_code == 404
+        assert response.get_json()['code'] == 'not_found'
+    response = client.post('/api/v1/ai/connections', json={}, headers=auth_headers)
+    assert response.status_code == 400
+    assert response.get_json()['code'] == 'validation_error'
+
+
+def test_connection_catalog_supports_api_key_clients_without_secrets(app, client, auth_headers):
+    from app.models import User
+    from app.services.api_key_service import ApiKeyService
+    created = client.post('/api/v1/ai/connections', json=draft(), headers=auth_headers)
+    assert created.status_code == 201
+    with app.app_context():
+        viewer = User(username='connection_viewer', email='connection-viewer@test.local',
+                      password_hash='unused', role=User.ROLE_VIEWER, is_active=True)
+        db.session.add(viewer)
+        db.session.commit()
+        _, key = ApiKeyService.create_key(viewer.id, name='connection selector', scopes=['*'])
+    headers = {'X-API-Key': key}
+    response = client.get('/api/v1/ai/connections', headers=headers)
+    assert response.status_code == 200
+    assert set(response.get_json()['connections'][0]) == {'id', 'name', 'provider', 'model'}
+    assert 'private-test-key' not in response.get_data(as_text=True)
+    assert client.post('/api/v1/ai/connections', json=draft(), headers=headers).status_code == 403
+
+
 def test_catalog_uses_prompture_descriptors_and_deduplicates():
     from prompture.drivers.provider_descriptors import PROVIDER_DESCRIPTORS
     catalog = service.catalog()
